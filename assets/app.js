@@ -80,17 +80,30 @@ const axisPctFmt = new Intl.NumberFormat("es-MX", {
   maximumFractionDigits: 0,
 });
 
+const THEME_KEY = "fit-integra-tema";
+
 let currentRows = [];
 let currentCols = [];
 let sortState = { id: "avance", dir: "desc" };
 let avanceChart = null;
 let lastNarrow = null;
+let focusSlug = null;
 
 document.getElementById("btn-imprimir").addEventListener("click", () => window.print());
+document.getElementById("btn-tema").addEventListener("click", toggleTheme);
 document.getElementById("tabla-head").addEventListener("click", onSort);
+document.getElementById("unit-switch").addEventListener("click", onUnitClick);
+window.addEventListener("hashchange", () => {
+  if (currentRows.length) applySelection();
+});
 window.addEventListener("resize", () => {
   window.clearTimeout(onResize._timer);
   onResize._timer = window.setTimeout(onResize, 150);
+});
+syncThemeButton();
+window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", (event) => {
+  if (storedTheme()) return;
+  setTheme(event.matches ? "dark" : "light", false);
 });
 
 load().then(render).catch((error) => {
@@ -114,19 +127,178 @@ function render(data) {
   if (!rows.length) {
     throw new Error("data/kpis.json no trae unidades con nombre.");
   }
+  assignSlugs(rows);
   currentRows = rows;
-  paintHeader(data, rows);
-  paintNetwork(rows);
-  paintOther(rows);
-  renderChart(rows);
+  paintHeader(data);
+  applySelection();
+  document.getElementById("error-banner").hidden = true;
+  document.getElementById("contenido").setAttribute("aria-busy", "false");
+}
+
+function assignSlugs(rows) {
+  const seen = new Set();
+  rows.forEach((row) => {
+    let base = slugify(row.unidad) || "unidad";
+    let slug = base;
+    let n = 2;
+    while (seen.has(slug)) {
+      slug = base + "-" + n;
+      n += 1;
+    }
+    seen.add(slug);
+    row.slug = slug;
+  });
+}
+
+function slugify(name) {
+  return String(name)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function readHash() {
+  const raw = location.hash.replace(/^#/, "");
+  if (!raw) return "";
+  try {
+    return decodeURIComponent(raw).trim().toLowerCase();
+  } catch (error) {
+    return raw.trim().toLowerCase();
+  }
+}
+
+function activeUnit() {
+  const slug = readHash();
+  if (!slug || slug === "global") return null;
+  return currentRows.find((row) => row.slug === slug) || null;
+}
+
+function applySelection() {
+  const unit = activeUnit();
+  paintSwitch(unit);
+  paintScope(unit);
+  const rows = unit ? [unit] : currentRows;
+  paintNetwork(rows, unit);
+  paintOther(rows, unit);
+  renderChart(currentRows, unit);
   currentCols = buildColumns(rows);
   if (!currentCols.some((col) => col.id === sortState.id)) {
     const first = currentCols[0];
     sortState = { id: first.id, dir: first.prefer || "asc" };
   }
-  paintTable();
-  paintPending(rows);
-  document.getElementById("contenido").setAttribute("aria-busy", "false");
+  paintTable(rows, unit);
+  paintPending(rows, unit);
+}
+
+function onUnitClick(event) {
+  const button = event.target.closest("button[data-slug]");
+  if (!button) return;
+  const slug = button.dataset.slug;
+  focusSlug = slug;
+  const current = readHash() || "global";
+  if (current === slug) {
+    applySelection();
+    return;
+  }
+  location.hash = slug;
+}
+
+function paintSwitch(unit) {
+  const host = document.getElementById("unit-switch");
+  host.replaceChildren();
+  const items = [{ slug: "global", label: "Global" }].concat(
+    currentRows.map((row) => ({ slug: row.slug, label: row.unidad }))
+  );
+  items.forEach((item) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "unit-pill";
+    button.dataset.slug = item.slug;
+    button.textContent = item.label;
+    const pressed = unit ? item.slug === unit.slug : item.slug === "global";
+    button.setAttribute("aria-pressed", pressed ? "true" : "false");
+    host.append(button);
+  });
+  if (focusSlug) {
+    const again = host.querySelector('[data-slug="' + CSS.escape(focusSlug) + '"]');
+    focusSlug = null;
+    if (again) again.focus();
+  }
+}
+
+function paintScope(unit) {
+  document.getElementById("titulo-red").textContent = unit ? unit.unidad : "Totales de la red";
+  document.getElementById("lead-red").textContent = unit
+    ? "Cifras de " + unit.unidad + ". Los porcentajes usan las mismas fórmulas que el total de la red."
+    : "Totales de las " + currentRows.length + " unidades. El crecimiento compara la suma de 2026 con la suma del año base, no el promedio de cada unidad.";
+  document.getElementById("titulo-otras").textContent = unit ? "Otras cifras" : "Otras cifras con captura";
+  document.getElementById("lead-otras").textContent = unit
+    ? "Solo lo que " + unit.unidad + " trae capturado. No se calcula utilidad."
+    : "Solo se suman las unidades que traen dato. No se calcula utilidad.";
+  document.getElementById("titulo-tabla").textContent = unit ? unit.unidad : "Detalle por unidad";
+  document.getElementById("lead-tabla").textContent = unit
+    ? "Cifras de " + unit.unidad + ". El estatus es captura manual y puede no coincidir con el avance."
+    : "Selecciona un encabezado para ordenar. El estatus es captura manual y puede no coincidir con el avance.";
+  const periodo = document.getElementById("periodo-badge").textContent;
+  document.getElementById("titulo-grafica").textContent = unit
+    ? "Avance de meta · " + unit.unidad
+    : "Avance de meta por unidad";
+  document.getElementById("chart-lead").textContent = unit
+    ? unit.unidad + " va en color. El resto de la red queda en gris, de mayor a menor avance."
+    : "Cada barra es ingresos 2026 entre la meta. " + periodo + ". Ordenado de mayor a menor avance.";
+
+  const status = document.getElementById("kpi-status");
+  status.replaceChildren();
+  if (!unit) {
+    status.hidden = true;
+    return;
+  }
+  status.hidden = false;
+  if (unit.status) status.append(statusBadge(unit.status));
+  else status.textContent = "Estatus pendiente de captura";
+}
+
+function storedTheme() {
+  try {
+    const saved = localStorage.getItem(THEME_KEY);
+    return saved === "light" || saved === "dark" ? saved : "";
+  } catch (error) {
+    return "";
+  }
+}
+
+function setTheme(theme, persist) {
+  document.documentElement.setAttribute("data-theme", theme);
+  document.documentElement.style.colorScheme = theme;
+  if (persist) {
+    try {
+      localStorage.setItem(THEME_KEY, theme);
+    } catch (error) {
+      /* el tema sigue aplicado en esta visita */
+    }
+  }
+  syncThemeButton();
+  if (currentRows.length) renderChart(currentRows, activeUnit());
+}
+
+function toggleTheme() {
+  const next = document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark";
+  setTheme(next, true);
+}
+
+function syncThemeButton() {
+  const button = document.getElementById("btn-tema");
+  const dark = document.documentElement.getAttribute("data-theme") === "dark";
+  button.setAttribute("aria-pressed", dark ? "true" : "false");
+  button.setAttribute("aria-label", dark ? "Activar modo claro" : "Activar modo oscuro");
+  button.title = dark ? "Modo claro" : "Modo oscuro";
+}
+
+function cssVar(name, fallback) {
+  const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  return value || fallback;
 }
 
 function derive(raw) {
@@ -160,7 +332,7 @@ function num(value) {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-function paintHeader(data, rows) {
+function paintHeader(data) {
   const periodo = data.periodo || "Periodo sin definir";
   document.title = "Resumen comercial · " + periodo + " · Fit Integra";
   document.getElementById("periodo-badge").textContent = periodo;
@@ -169,9 +341,6 @@ function paintHeader(data, rows) {
   corte.textContent = data.corte || "";
   corte.hidden = !data.corte;
   document.getElementById("fuente-foot").textContent = data.fuente || "Sin fuente";
-  document.getElementById("conteo-unidades").textContent = String(rows.length);
-  document.getElementById("chart-lead").textContent =
-    "Cada barra es ingresos 2026 entre la meta. " + periodo + ". Ordenado de mayor a menor avance.";
 }
 
 function formatStamp(value) {
@@ -193,7 +362,7 @@ function formatStamp(value) {
   return day + ", " + time + " (hora del centro de México)";
 }
 
-function paintNetwork(rows) {
+function paintNetwork(rows, unit) {
   const paired = rows.filter((row) => row.ingresos_2026 != null && row.meta != null && row.meta !== 0);
   const ingresos = paired.reduce((sum, row) => sum + row.ingresos_2026, 0);
   const meta = paired.reduce((sum, row) => sum + row.meta, 0);
@@ -219,6 +388,9 @@ function paintNetwork(rows) {
     track.setAttribute("aria-valuenow", String(Math.round(points)));
     track.setAttribute("aria-valuetext", pctFmt.format(avance));
   }
+  document.getElementById("etiqueta-avance").textContent = unit
+    ? "Avance de meta de " + unit.unidad
+    : "Avance de meta de la red";
 
   const faltante = document.getElementById("kpi-faltante");
   faltante.classList.remove("delta-pos", "delta-neg");
@@ -238,15 +410,21 @@ function paintNetwork(rows) {
   const crec24 = networkGrowth(rows, "ingresos_2026", "ingresos_2024", true);
   setDelta(document.getElementById("kpi-vs25"), crec25, (value) => growthFmt.format(value));
   setDelta(document.getElementById("kpi-vs24"), crec24, (value) => growthFmt.format(value));
-  document.getElementById("kpi-vs25-base").textContent = baseLine(rows, "ingresos_2025", "Ingresos 2025 de la red");
-  document.getElementById("kpi-vs24-base").textContent = baseLine(rows, "ingresos_2024", "Ingresos 2024 de la red");
+  const base25 = unit ? "Ingresos 2025" : "Ingresos 2025 de la red";
+  const base24 = unit ? "Ingresos 2024" : "Ingresos 2024 de la red";
+  document.getElementById("kpi-vs25-base").textContent = baseLine(rows, "ingresos_2025", base25);
+  document.getElementById("kpi-vs24-base").textContent = baseLine(rows, "ingresos_2024", base24);
 
   const ceros = rows.filter((row) => row.ingresos_2024 === 0).map((row) => row.unidad);
   const nota24 = document.getElementById("nota-2024");
   if (ceros.length) {
     nota24.hidden = false;
     const verbo = ceros.length === 1 ? "tiene" : "tienen";
-    nota24.textContent = lista(ceros) + " " + verbo + " ingresos 2024 en $0. Su crecimiento contra 2024 es −100%. En el total de la red esos ingresos de 2026 sí entran y la base de 2024 no sube.";
+    let text = lista(ceros) + " " + verbo + " ingresos 2024 en $0. Su crecimiento contra 2024 es −100%.";
+    if (!unit) {
+      text += " En el total de la red esos ingresos de 2026 sí entran y la base de 2024 no sube.";
+    }
+    nota24.textContent = text;
   } else {
     nota24.hidden = true;
     nota24.textContent = "";
@@ -255,11 +433,15 @@ function paintNetwork(rows) {
   const ventaRows = rows.filter((row) => row.ingresos_2026 != null && row.ingresos_2026 !== 0);
   const venta = ventaRows.reduce((sum, row) => sum + (row.venta == null ? 0 : row.venta), 0);
   const baseVenta = ventaRows.reduce((sum, row) => sum + row.ingresos_2026, 0);
-  document.getElementById("kpi-venta").textContent = ventaRows.length ? moneyFmt.format(venta) : "—";
+  const ventaVacia = unit && unit.venta == null;
+  document.getElementById("kpi-venta").textContent = ventaVacia || !ventaRows.length ? "—" : moneyFmt.format(venta);
   document.getElementById("kpi-venta-pct").textContent = baseVenta ? pctFmt.format(venta / baseVenta) + " de los ingresos 2026" : "";
   const sinVenta = rows.filter((row) => row.venta == null).length;
   const notaVenta = document.getElementById("nota-venta");
-  if (sinVenta) {
+  if (unit && unit.venta == null && unit.pctVenta != null) {
+    notaVenta.hidden = false;
+    notaVenta.textContent = "Sin captura de venta. En el porcentaje cuenta como cero.";
+  } else if (!unit && sinVenta) {
     notaVenta.hidden = false;
     notaVenta.textContent = sinVenta + " de " + rows.length + " unidades sin captura. En el porcentaje cuentan como cero.";
   } else {
@@ -289,8 +471,9 @@ function networkGrowth(rows, actualKey, baseKey, includeZeroBase) {
   return actual / base - 1;
 }
 
-function paintOther(rows) {
+function paintOther(rows, unit) {
   paintSumCard("card-gastos", "kpi-gastos", "nota-gastos", rows, "gastos_sin_inversion", moneyFmt, (sum) => {
+    if (unit) return "No se resta de los ingresos: no hay una utilidad verificada.";
     const cobertura = sum.present + " de " + rows.length + " unidades con captura.";
     return sum.missing
       ? cobertura + " No se resta de los ingresos: no hay una utilidad verificada."
@@ -298,10 +481,14 @@ function paintOther(rows) {
   });
   paintSumCard("card-usuarios", "kpi-usuarios", "nota-usuarios", rows, "usuarios_activos_mes_anterior", countFmt, (sum) => {
     const mes = rows.every((row) => row.usuarios_activos == null)
-      ? " Usuarios activos del mes en curso: pendiente."
+      ? "Usuarios activos del mes en curso: pendiente."
       : "";
-    return "Suma de " + sum.present + " unidades." + mes;
+    if (unit) return mes;
+    return "Suma de " + sum.present + " unidades." + (mes ? " " + mes : "");
   });
+  const gastos = document.getElementById("card-gastos");
+  const usuarios = document.getElementById("card-usuarios");
+  document.getElementById("seccion-otras").hidden = gastos.hidden && usuarios.hidden;
 }
 
 function paintSumCard(cardId, valueId, noteId, rows, key, formatter, noteText) {
@@ -327,10 +514,11 @@ function sumField(rows, key) {
   return { total, present, missing: rows.length - present };
 }
 
-function renderChart(rows) {
+function renderChart(rows, unit) {
   const canvas = document.getElementById("chart-avance");
   const fallback = document.getElementById("chart-fallback");
   const chartRows = rows.filter((row) => row.avance != null).slice().sort((a, b) => b.avance - a.avance);
+  const theme = chartTheme();
   document.getElementById("chart-resumen").textContent = chartRows.length
     ? "Avance de meta por unidad, de mayor a menor: " + chartRows.map((row) => row.unidad + " " + pctFmt.format(row.avance)).join(". ") + "."
     : "No hay avances para describir.";
@@ -364,7 +552,9 @@ function renderChart(rows) {
         datasets: [{
           label: "Avance de meta",
           data: chartRows.map((row) => row.avance),
-          backgroundColor: chartRows.map((row) => bandColor(row.avance)),
+          backgroundColor: chartRows.map((row) => (
+            unit && row.unidad !== unit.unidad ? theme.muted : bandColor(row.avance)
+          )),
           borderWidth: 0,
           borderRadius: 4,
           maxBarThickness: 22,
@@ -380,9 +570,9 @@ function renderChart(rows) {
         plugins: {
           legend: { display: false },
           tooltip: {
-            backgroundColor: "#0f172a",
-            titleColor: "#ffffff",
-            bodyColor: "#f8fafc",
+            backgroundColor: theme.tooltipBg,
+            titleColor: theme.tooltipTitle,
+            bodyColor: theme.tooltipBody,
             padding: 10,
             callbacks: {
               label(context) {
@@ -404,15 +594,15 @@ function renderChart(rows) {
           x: {
             min: 0,
             max: xMax,
-            grid: { color: "#e2e8f0" },
+            grid: { color: theme.grid },
             ticks: {
-              color: "#334155",
+              color: theme.tick,
               callback: (value) => axisPctFmt.format(value),
             },
             title: {
               display: true,
               text: "Avance de meta",
-              color: "#0f172a",
+              color: theme.axis,
               font: { size: 12, weight: "600", family: "Inter, system-ui, sans-serif" },
             },
           },
@@ -420,17 +610,26 @@ function renderChart(rows) {
             grid: { display: false },
             ticks: {
               autoSkip: false,
-              color: "#0f172a",
+              color: (ctx) => {
+                const label = ctx.tick && ctx.tick.label;
+                if (unit && label === unit.unidad) return theme.selected;
+                return theme.axis;
+              },
               padding: 6,
               font: { size: ySize, weight: "600", family: "Inter, system-ui, sans-serif" },
             },
           },
         },
       },
-      plugins: [metaGuide(chartRows)],
+      plugins: [metaGuide(chartRows, unit, theme)],
     });
     canvas.setAttribute("role", "img");
-    canvas.setAttribute("aria-label", "Gráfica de barras: avance de meta por unidad");
+    canvas.setAttribute(
+      "aria-label",
+      unit
+        ? "Gráfica de barras: avance de meta, con " + unit.unidad + " resaltada"
+        : "Gráfica de barras: avance de meta por unidad"
+    );
   } catch (error) {
     if (avanceChart) {
       avanceChart.destroy();
@@ -442,7 +641,24 @@ function renderChart(rows) {
   }
 }
 
-function metaGuide(chartRows) {
+function chartTheme() {
+  return {
+    grid: cssVar("--chart-grid", "#e2e8f0"),
+    tick: cssVar("--chart-tick", "#334155"),
+    axis: cssVar("--chart-axis", "#0f172a"),
+    guide: cssVar("--chart-guide", "#0f172a"),
+    label: cssVar("--chart-label", "#0f172a"),
+    labelInside: cssVar("--chart-label-inside", "#ffffff"),
+    muted: cssVar("--chart-muted", "#cbd5e1"),
+    mutedInk: cssVar("--chart-muted-ink", "#0f172a"),
+    selected: cssVar("--chart-selected", "#065f46"),
+    tooltipBg: cssVar("--tooltip-bg", "#0f172a"),
+    tooltipTitle: cssVar("--tooltip-title", "#ffffff"),
+    tooltipBody: cssVar("--tooltip-body", "#f8fafc"),
+  };
+}
+
+function metaGuide(chartRows, unit, theme) {
   return {
     id: "guiaMeta",
     afterDatasetsDraw(chart) {
@@ -452,13 +668,13 @@ function metaGuide(chartRows) {
       if (x >= chartArea.left && x <= chartArea.right) {
         ctx.beginPath();
         ctx.setLineDash([4, 3]);
-        ctx.strokeStyle = "#0f172a";
+        ctx.strokeStyle = theme.guide;
         ctx.lineWidth = 1.25;
         ctx.moveTo(x, chartArea.top);
         ctx.lineTo(x, chartArea.bottom);
         ctx.stroke();
         ctx.setLineDash([]);
-        ctx.fillStyle = "#0f172a";
+        ctx.fillStyle = theme.guide;
         ctx.font = "700 11px Inter, system-ui, sans-serif";
         ctx.textAlign = "center";
         ctx.textBaseline = "bottom";
@@ -474,12 +690,13 @@ function metaGuide(chartRows) {
         const width = ctx.measureText(label).width;
         const end = Math.max(bar.x, bar.base == null ? bar.x : bar.base);
         const roomInside = end - chartArea.left;
+        const muted = unit && row.unidad !== unit.unidad;
         if (end + 8 + width > chartArea.right && roomInside > width + 16) {
-          ctx.fillStyle = "#ffffff";
+          ctx.fillStyle = muted ? theme.mutedInk : theme.labelInside;
           ctx.textAlign = "right";
           ctx.fillText(label, end - 8, bar.y);
         } else {
-          ctx.fillStyle = "#0f172a";
+          ctx.fillStyle = theme.label;
           ctx.textAlign = "left";
           ctx.fillText(label, Math.min(end + 8, chartArea.right - width), bar.y);
         }
@@ -493,7 +710,7 @@ function onResize() {
   updateScrollHint();
   const narrow = window.matchMedia("(max-width: 640px)").matches;
   if (narrow === lastNarrow || !currentRows.length) return;
-  renderChart(currentRows);
+  renderChart(currentRows, activeUnit());
 }
 
 function buildColumns(rows) {
@@ -702,7 +919,8 @@ function columnFromField(field) {
   };
 }
 
-function paintTable() {
+function paintTable(rows, unit) {
+  const source = rows || currentRows;
   const flags = { dagger: false, double: false };
   const head = document.getElementById("tabla-head");
   const body = document.getElementById("tabla-body");
@@ -718,7 +936,9 @@ function paintTable() {
     caption.className = "sr-only";
     table.prepend(caption);
   }
-  caption.textContent = "Detalle por unidad del resumen comercial. Active un encabezado para ordenar.";
+  caption.textContent = unit
+    ? "Detalle de " + unit.unidad + "."
+    : "Detalle por unidad del resumen comercial. Active un encabezado para ordenar.";
 
   const headRow = document.createElement("tr");
   currentCols.forEach((col) => {
@@ -744,9 +964,10 @@ function paintTable() {
   });
   head.append(headRow);
 
-  const ordered = currentRows.slice().sort(compareRows);
+  const ordered = source.slice().sort(compareRows);
   ordered.forEach((row) => {
     const tr = document.createElement("tr");
+    if (unit && row.slug === unit.slug) tr.classList.add("is-selected");
     currentCols.forEach((col, index) => {
       const cell = document.createElement(index === 0 ? "th" : "td");
       if (index === 0) cell.scope = "row";
@@ -757,20 +978,22 @@ function paintTable() {
     body.append(tr);
   });
 
-  const totalRow = document.createElement("tr");
-  currentCols.forEach((col, index) => {
-    const cell = document.createElement(index === 0 ? "th" : "td");
-    if (index === 0) cell.scope = "row";
-    if (col.align === "right") cell.classList.add("num");
-    cell.append(col.total(currentRows, flags));
-    totalRow.append(cell);
-  });
-  foot.append(totalRow);
+  if (!unit) {
+    const totalRow = document.createElement("tr");
+    currentCols.forEach((col, index) => {
+      const cell = document.createElement(index === 0 ? "th" : "td");
+      if (index === 0) cell.scope = "row";
+      if (col.align === "right") cell.classList.add("num");
+      cell.append(col.total(source, flags));
+      totalRow.append(cell);
+    });
+    foot.append(totalRow);
+  }
 
   const col = currentCols.find((item) => item.id === sortState.id);
   const orden = document.getElementById("tabla-orden");
   if (col) orden.textContent = "Orden: " + col.label + ", " + dirLabel(col) + ".";
-  paintNotes(flags);
+  paintNotes(flags, source);
   updateScrollHint();
   window.requestAnimationFrame(updateScrollHint);
 }
@@ -782,16 +1005,16 @@ function updateScrollHint() {
   hint.hidden = wrap.scrollWidth <= wrap.clientWidth + 4;
 }
 
-function paintNotes(flags) {
+function paintNotes(flags, rows) {
   const host = document.getElementById("tabla-notas");
   host.replaceChildren();
   addNote(host, "Los porcentajes se calculan al abrir la página a partir de data/kpis.json.");
   if (flags.dagger) {
-    const names = currentRows.filter((row) => row.ingresos_2024 === 0 && row.crec24 != null).map((row) => row.unidad);
+    const names = rows.filter((row) => row.ingresos_2024 === 0 && row.crec24 != null).map((row) => row.unidad);
     addNote(host, "† " + lista(names) + ": ingresos 2024 en $0. La fórmula verificada devuelve −100%, no un dato vacío.");
   }
   if (flags.double) {
-    const names = currentRows.filter((row) => row.venta == null && row.pctVenta != null).map((row) => row.unidad);
+    const names = rows.filter((row) => row.venta == null && row.pctVenta != null).map((row) => row.unidad);
     addNote(host, "‡ " + lista(names) + ": sin venta capturada. La fórmula verificada cuenta ese vacío como 0%.");
   }
 }
@@ -811,7 +1034,7 @@ function onSort(event) {
   if (!col) return;
   if (sortState.id === id) sortState.dir = sortState.dir === "asc" ? "desc" : "asc";
   else sortState = { id, dir: col.prefer || "desc" };
-  paintTable();
+  paintTable(activeUnit() ? [activeUnit()] : currentRows, activeUnit());
   const again = document.querySelector('#tabla-head button[data-sort="' + id + '"]');
   if (again) again.focus();
 }
@@ -841,7 +1064,7 @@ function dirLabel(col) {
   return sortState.dir === "asc" ? "de menor a mayor" : "de mayor a menor";
 }
 
-function paintPending(rows) {
+function paintPending(rows, unit) {
   const host = document.getElementById("pendiente-grupos");
   host.replaceChildren();
   const grouped = new Map();
@@ -853,13 +1076,17 @@ function paintPending(rows) {
   if (!grouped.size) {
     const p = document.createElement("p");
     p.className = "nota";
-    p.textContent = "No hay columnas vacías en este corte.";
+    p.textContent = unit
+      ? "No hay campos vacíos en " + unit.unidad + "."
+      : "No hay columnas vacías en este corte.";
     host.append(p);
     return;
   }
   const intro = document.createElement("p");
   intro.className = "nota";
-  intro.textContent = "Estos campos están vacíos en las " + rows.length + " unidades. No se muestran en la tabla ni como ceros.";
+  intro.textContent = unit
+    ? "Estos campos están vacíos en " + unit.unidad + ". No se muestran en la tabla ni como ceros."
+    : "Estos campos están vacíos en las " + rows.length + " unidades. No se muestran en la tabla ni como ceros.";
   host.append(intro);
   GROUPS.forEach((group) => {
     const fields = grouped.get(group.id);
