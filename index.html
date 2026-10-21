@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="es-MX">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="light">
+  <meta name="description" content="Resumen comercial de la red Fit Integra: avance de meta, ingresos y venta por unidad. Cifras en pesos mexicanos.">
+  <title>Resumen comercial · Fit Integra</title>
+  <link rel="icon" type="image/png" href="assets/fit-integra-logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/app.css">
+</head>
+<body>
+  <a class="skip-link" href="#contenido">Saltar al contenido</a>
+
+  <header class="site-header">
+    <div class="wrap topbar">
+      <div class="brand">
+        <img class="logo" src="assets/fit-integra-logo.png" alt="Fit Integra" width="287" height="320">
+        <div class="brand-text">
+          <h1>Resumen comercial</h1>
+          <p>Red de gimnasios Fit Integra</p>
+        </div>
+      </div>
+      <div class="stamp">
+        <p id="periodo-badge" class="badge-period">Octubre 2026</p>
+        <p id="actualizacion" class="stamp-line">Cargando actualización…</p>
+        <p id="corte" class="stamp-line"></p>
+        <button id="btn-imprimir" class="btn no-print" type="button">Imprimir</button>
+      </div>
+    </div>
+  </header>
+
+  <main id="contenido" class="page" aria-busy="true">
+    <div class="wrap stack">
+      <div id="error-banner" class="error-banner" role="alert" hidden></div>
+
+      <section aria-labelledby="titulo-red">
+        <div class="section-head">
+          <h2 id="titulo-red" class="section-title">Totales de la red</h2>
+          <p class="section-lead">Totales de las <span id="conteo-unidades">…</span> unidades. El crecimiento compara la suma de 2026 con la suma del año base, no el promedio de cada unidad.</p>
+        </div>
+        <div class="kpi-grid">
+          <article class="card">
+            <h3 class="card-label">Ingresos 2026</h3>
+            <p id="kpi-ingresos" class="kpi-value">—</p>
+            <p id="kpi-meta" class="kpi-sub">Meta —</p>
+            <p id="kpi-avance" class="kpi-accent">—</p>
+            <div id="kpi-track" class="track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-labelledby="etiqueta-avance">
+              <span id="etiqueta-avance" class="sr-only">Avance de meta de la red</span>
+              <span id="kpi-bar" class="fill"></span>
+            </div>
+            <p id="kpi-faltante" class="kpi-note"></p>
+          </article>
+
+          <article class="card">
+            <h3 class="card-label">Crecimiento vs 2025</h3>
+            <p id="kpi-vs25" class="kpi-value">—</p>
+            <p id="kpi-vs25-base" class="kpi-sub"></p>
+          </article>
+
+          <article class="card">
+            <h3 class="card-label">Crecimiento vs 2024</h3>
+            <p id="kpi-vs24" class="kpi-value">—</p>
+            <p id="kpi-vs24-base" class="kpi-sub"></p>
+            <p id="nota-2024" class="kpi-note" hidden></p>
+          </article>
+
+          <article class="card">
+            <h3 class="card-label">Venta</h3>
+            <p id="kpi-venta" class="kpi-value">—</p>
+            <p id="kpi-venta-pct" class="kpi-sub"></p>
+            <p id="nota-venta" class="kpi-note" hidden></p>
+          </article>
+        </div>
+      </section>
+
+      <section aria-labelledby="titulo-otras">
+        <div class="section-head">
+          <h2 id="titulo-otras" class="section-title">Otras cifras con captura</h2>
+          <p class="section-lead">Solo se suman las unidades que traen dato. No se calcula utilidad.</p>
+        </div>
+        <div class="kpi-grid-2">
+          <article id="card-gastos" class="card" hidden>
+            <h3 class="card-label">Gastos sin inversión</h3>
+            <p id="kpi-gastos" class="kpi-value">—</p>
+            <p id="nota-gastos" class="kpi-note"></p>
+          </article>
+          <article id="card-usuarios" class="card" hidden>
+            <h3 class="card-label">Usuarios activos del mes anterior</h3>
+            <p id="kpi-usuarios" class="kpi-value">—</p>
+            <p id="nota-usuarios" class="kpi-note"></p>
+          </article>
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="titulo-grafica">
+        <div class="section-head">
+          <h2 id="titulo-grafica" class="section-title">Avance de meta por unidad</h2>
+          <p id="chart-lead" class="section-lead">Cada barra es ingresos 2026 entre la meta.</p>
+        </div>
+        <div class="chart-box">
+          <canvas id="chart-avance" role="img" aria-label="Gráfica de barras: avance de meta por unidad" aria-describedby="chart-resumen"></canvas>
+        </div>
+        <p id="chart-fallback" class="nota" hidden></p>
+        <p id="chart-resumen" class="sr-only"></p>
+        <ul class="legend">
+          <li><span class="swatch swatch-50" aria-hidden="true"></span> Menos del 50%</li>
+          <li><span class="swatch swatch-75" aria-hidden="true"></span> Del 50% a menos del 75%</li>
+          <li><span class="swatch swatch-90" aria-hidden="true"></span> Del 75% a menos del 90%</li>
+          <li><span class="swatch swatch-99" aria-hidden="true"></span> Del 90% a menos del 100%</li>
+          <li><span class="swatch swatch-100" aria-hidden="true"></span> 100% o más</li>
+        </ul>
+        <p class="nota">La línea punteada marca el 100% de la meta. El color sigue el avance calculado y no el estatus manual.</p>
+      </section>
+
+      <section class="card table-card" aria-labelledby="titulo-tabla">
+        <div class="table-intro">
+          <div class="section-head">
+            <h2 id="titulo-tabla" class="section-title">Detalle por unidad</h2>
+            <p class="section-lead">Selecciona un encabezado para ordenar. El estatus es captura manual y puede no coincidir con el avance.</p>
+          </div>
+          <p id="tabla-orden" class="nota">Orden: avance de meta, de mayor a menor.</p>
+          <p class="scroll-hint no-print" hidden>Desliza la tabla hacia la derecha para ver todas las columnas.</p>
+        </div>
+        <div class="table-wrap">
+          <table id="tabla-kpis">
+            <thead id="tabla-head"></thead>
+            <tbody id="tabla-body">
+              <tr><td class="cargando">Cargando cifras…</td></tr>
+            </tbody>
+            <tfoot id="tabla-foot"></tfoot>
+          </table>
+        </div>
+        <div id="tabla-notas" class="table-notes"></div>
+      </section>
+
+      <section class="card" aria-labelledby="titulo-pendiente">
+        <div class="section-head">
+          <h2 id="titulo-pendiente" class="section-title">Pendiente de captura</h2>
+        </div>
+        <div id="pendiente-grupos"></div>
+        <div class="formula">
+          <details>
+            <summary>Qué se calcula en esta página y qué no</summary>
+            <p><strong>Sí, con fórmula verificada contra Notion:</strong></p>
+            <ul>
+              <li><code>Avance de meta</code> = Ingresos 2026 ÷ Meta</li>
+              <li><code>Crecimiento vs 2025</code> = Ingresos 2026 ÷ Ingresos 2025 − 1</li>
+              <li><code>Crecimiento vs 2024</code> = Ingresos 2026 ÷ Ingresos 2024 − 1. Si los ingresos 2024 son 0, el resultado es −100%.</li>
+              <li><code>% Venta</code> = Venta ÷ Ingresos 2026. Si la venta está vacía, cuenta como 0.</li>
+            </ul>
+            <p><strong>No se calcula aquí.</strong> Altas totales, bajas, altas netas, porcentaje de altas digitales, tasa de retención, tasa de cancelación, ticket promedio, costo por conversación, porcentaje de conversión, porcentajes de recurrente, recuperado, adelantado, retail, eventos, agregadores y domiciliado, y la suma de ingresos. Esas fórmulas de Notion no quedaron verificadas, o este corte no tiene los insumos. Publicarlas sería presentar un cero como si fuera un resultado.</p>
+            <p>El estatus se muestra tal como se capturó. No se recalcula con el avance: una unidad puede decir «Hasta 50%» y traer otro porcentaje.</p>
+          </details>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <p class="foot-title">Fit Integra · Resumen comercial · Montos en pesos mexicanos (MXN).</p>
+      <p>Los porcentajes de avance, crecimiento y venta se calculan en el navegador al abrir la página. El archivo de datos solo guarda insumos y el estatus manual.</p>
+      <p>Fuente: <span id="fuente-foot">Notion</span> · <a href="data/kpis.json">data/kpis.json</a></p>
+    </div>
+  </footer>
+
+  <noscript>
+    <p class="error-banner wrap">Activa JavaScript para ver las cifras. Los datos están en data/kpis.json.</p>
+  </noscript>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.6/dist/chart.umd.min.js"></script>
+  <script src="assets/app.js"></script>
+</body>
+</html>
