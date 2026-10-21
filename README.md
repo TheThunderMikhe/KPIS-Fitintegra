@@ -9,6 +9,8 @@ La actualización del día solo toca [`data/kpis.json`](data/kpis.json). El nave
 - Totales de la red: ingresos 2026 contra la meta, avance, crecimiento vs 2025 y vs 2024, y venta.
 - Gráfica de avance de meta por unidad.
 - Tabla por unidad, ordenable. La primera columna se queda fija al desplazar en horizontal.
+- Selector de unidad. **Global** es el total de la red. Cada pastilla sale del nombre en `unidades`; no está escrita en el HTML. Al elegir una unidad, las tarjetas, la gráfica y la tabla quedan en esa unidad. La elección vive en el hash (`#coapa`, `#la-salle`, `#casa-blanca`) y se puede compartir. Vacío o `#global` es la red. Un hash que no coincide deja la vista global.
+- Tema claro u oscuro. El botón de sol o luna está en el encabezado. Sin elección guardada, sigue `prefers-color-scheme`. La elección se guarda en `localStorage` (`fit-integra-tema`) y se aplica antes de pintar, para no parpadear.
 - Columnas vacías en las 11 unidades, en «Pendiente de captura», no como ceros.
 - Estatus tal como se capturó. No se recalcula con el avance.
 
@@ -100,11 +102,4 @@ Abre `http://localhost:8080`.
 
 El sitio está en la raíz del repositorio (`index.html`) y lleva `.nojekyll` para que Pages no lo procese con Jekyll.
 
-En este repositorio **Pages no está activado**. Hay que encenderlo a mano, con permiso de administrador:
-
-1. Settings → Pages → Build and deployment.
-2. Source: **Deploy from a branch**.
-3. Branch: `main`, folder: **`/ (root)`**.
-4. Save.
-
-La URL queda en `https://thethundermikhe.github.io/KPIS-Fitintegra/`. El primer despliegue puede tardar un minuto. No hace falta workflow ni paso de build.
+Pages publica la rama `main`, carpeta `/`. La URL es `https://thethundermikhe.github.io/KPIS-Fitintegra/`. No hace falta workflow ni paso de build. Un cambio en `main` se ve al terminar el despliegue de Pages.

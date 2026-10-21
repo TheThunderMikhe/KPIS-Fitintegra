@@ -3,9 +3,23 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="color-scheme" content="light">
+  <meta name="color-scheme" content="light dark">
   <meta name="description" content="Resumen comercial de la red Fit Integra: avance de meta, ingresos y venta por unidad. Cifras en pesos mexicanos.">
   <title>Resumen comercial · Fit Integra</title>
+  <script>
+    (function () {
+      var theme = "light";
+      try {
+        var saved = localStorage.getItem("fit-integra-tema");
+        if (saved === "light" || saved === "dark") theme = saved;
+        else if (window.matchMedia("(prefers-color-scheme: dark)").matches) theme = "dark";
+      } catch (error) {
+        if (window.matchMedia("(prefers-color-scheme: dark)").matches) theme = "dark";
+      }
+      document.documentElement.setAttribute("data-theme", theme);
+      document.documentElement.style.colorScheme = theme;
+    })();
+  </script>
   <link rel="icon" type="image/png" href="assets/fit-integra-logo.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -17,8 +31,10 @@
 
   <header class="site-header">
     <div class="wrap topbar">
-      <div class="brand">
-        <img class="logo" src="assets/fit-integra-logo.png" alt="Fit Integra" width="287" height="320">
+        <div class="brand">
+        <span class="logo-plate">
+          <img class="logo" src="assets/fit-integra-logo.png" alt="Fit Integra" width="287" height="320">
+        </span>
         <div class="brand-text">
           <h1>Resumen comercial</h1>
           <p>Red de gimnasios Fit Integra</p>
@@ -28,7 +44,18 @@
         <p id="periodo-badge" class="badge-period">Octubre 2026</p>
         <p id="actualizacion" class="stamp-line">Cargando actualización…</p>
         <p id="corte" class="stamp-line"></p>
-        <button id="btn-imprimir" class="btn no-print" type="button">Imprimir</button>
+        <div class="header-actions no-print">
+          <button id="btn-tema" class="icon-btn" type="button" aria-pressed="false" aria-label="Activar modo oscuro" title="Modo oscuro">
+            <svg class="icon-moon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M21 14.5A8.5 8.5 0 1 1 9.5 3a7 7 0 0 0 11.5 11.5z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"></path>
+            </svg>
+            <svg class="icon-sun" viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="2"></circle>
+              <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path>
+            </svg>
+          </button>
+          <button id="btn-imprimir" class="btn" type="button">Imprimir</button>
+        </div>
       </div>
     </div>
   </header>
@@ -37,10 +64,17 @@
     <div class="wrap stack">
       <div id="error-banner" class="error-banner" role="alert" hidden></div>
 
+      <nav class="unit-bar no-print" aria-label="Elegir unidad">
+        <div id="unit-switch" class="unit-switch" role="group" aria-label="Unidad"></div>
+      </nav>
+
       <section aria-labelledby="titulo-red">
         <div class="section-head">
-          <h2 id="titulo-red" class="section-title">Totales de la red</h2>
-          <p class="section-lead">Totales de las <span id="conteo-unidades">…</span> unidades. El crecimiento compara la suma de 2026 con la suma del año base, no el promedio de cada unidad.</p>
+          <div class="title-line">
+            <h2 id="titulo-red" class="section-title">Totales de la red</h2>
+            <p id="kpi-status" class="kpi-status" hidden></p>
+          </div>
+          <p id="lead-red" class="section-lead">Totales de la red. El crecimiento compara la suma de 2026 con la suma del año base, no el promedio de cada unidad.</p>
         </div>
         <div class="kpi-grid">
           <article class="card">
@@ -77,10 +111,10 @@
         </div>
       </section>
 
-      <section aria-labelledby="titulo-otras">
+      <section id="seccion-otras" aria-labelledby="titulo-otras">
         <div class="section-head">
           <h2 id="titulo-otras" class="section-title">Otras cifras con captura</h2>
-          <p class="section-lead">Solo se suman las unidades que traen dato. No se calcula utilidad.</p>
+          <p id="lead-otras" class="section-lead">Solo se suman las unidades que traen dato. No se calcula utilidad.</p>
         </div>
         <div class="kpi-grid-2">
           <article id="card-gastos" class="card" hidden>
@@ -120,7 +154,7 @@
         <div class="table-intro">
           <div class="section-head">
             <h2 id="titulo-tabla" class="section-title">Detalle por unidad</h2>
-            <p class="section-lead">Selecciona un encabezado para ordenar. El estatus es captura manual y puede no coincidir con el avance.</p>
+            <p id="lead-tabla" class="section-lead">Selecciona un encabezado para ordenar. El estatus es captura manual y puede no coincidir con el avance.</p>
           </div>
           <p id="tabla-orden" class="nota">Orden: avance de meta, de mayor a menor.</p>
           <p class="scroll-hint no-print" hidden>Desliza la tabla hacia la derecha para ver todas las columnas.</p>
