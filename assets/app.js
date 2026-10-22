@@ -935,7 +935,8 @@ function metaGuide(chartRows, unit, theme) {
         const roomInside = end - chartArea.left;
         const muted = unit && row.unidad !== unit.unidad;
         if (end + 8 + width > chartArea.right && roomInside > width + 16) {
-          ctx.fillStyle = muted ? theme.mutedInk : theme.labelInside;
+          const onYellow = !muted && bandKey(row.avance) === "90";
+          ctx.fillStyle = muted ? theme.mutedInk : onYellow ? cssVar("--band-90-ink", "#1c1917") : theme.labelInside;
           ctx.textAlign = "right";
           ctx.fillText(label, end - 8, bar.y);
         } else {
@@ -960,7 +961,7 @@ function buildColumns(rows) {
   const base = baseColumns().filter((col) => col.visible(rows));
   const used = new Set(baseColumns().map((col) => col.key).filter(Boolean));
   INPUT_FIELDS.forEach((field) => {
-    if (used.has(field.key) || field.kind === "status") return;
+    if (used.has(field.key) || field.kind === "status" || field.key === "gastos_sin_inversion") return;
     if (!rows.some((row) => row[field.key] != null)) return;
     base.push(columnFromField(field));
   });
@@ -1090,22 +1091,6 @@ function baseColumns() {
           node.title = "Incluye como cero las unidades sin venta capturada.";
         }
         return node;
-      },
-    },
-    {
-      id: "gastos_sin_inversion",
-      key: "gastos_sin_inversion",
-      label: "Gastos sin inversión",
-      kind: "number",
-      prefer: "desc",
-      align: "right",
-      hint: "Gasto capturado, sin inversión. Vacío no es cero.",
-      value: (row) => row.gastos_sin_inversion,
-      visible: (rows) => rows.some((row) => row.gastos_sin_inversion != null),
-      render: (row) => moneyCell(row.gastos_sin_inversion),
-      total: (rows) => {
-        const sum = sumField(rows, "gastos_sin_inversion");
-        return moneyTotal(sum.total, sum.missing);
       },
     },
     {
@@ -1395,7 +1380,9 @@ function bandKey(value) {
 }
 
 function bandColor(value) {
-  return { 50: "#b91c1c", 75: "#c2410c", 90: "#b45309", 99: "#047857", 100: "#1d4ed8" }[bandKey(value)];
+  const key = bandKey(value);
+  if (key === "90") return cssVar("--band-90", "#f59e0b");
+  return { 50: "#b91c1c", 75: "#c2410c", 99: "#047857", 100: "#1d4ed8" }[key];
 }
 
 function setDelta(el, value, formatter) {

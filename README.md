@@ -92,7 +92,7 @@ Cada unidad lleva insumos. `null` es «sin captura». `0` es un cero real (Tepet
 
 Valores de `status` para el color de la etiqueta: `Hasta 50%`, `Hasta 75%`, `Hasta 90%`, `Hasta 99%`, `100%+`. Otro texto se muestra igual, sin color de escala.
 
-No pongas en el archivo avance, crecimientos, % de venta ni el resto de fórmulas. Si un insumo que hoy está en `null` se llena en todas o en alguna unidad, la columna aparece sola en la tabla.
+No pongas en el archivo avance, crecimientos, % de venta ni el resto de fórmulas. Si un insumo que hoy está en `null` se llena en todas o en alguna unidad, la columna aparece sola en la tabla. `gastos_sin_inversion` es la excepción: se queda en el JSON y, si hay captura, la suma sale en «Otras cifras», no como columna.
 
 El orden del arreglo es el de la tabla de Notion y sirve de desempate al ordenar.
 
