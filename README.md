@@ -1,6 +1,6 @@
 # Resumen comercial · Fit Integra
 
-Tablero estático de la red (11 unidades). Se publica en GitHub Pages desde `main`, sin build. Toda la interfaz está en español (es-MX) y los montos en pesos mexicanos (MXN).
+Tablero estático de Fit Integra. Se publica en GitHub Pages desde `main`, sin build. Toda la interfaz está en español (es-MX) y los montos en pesos mexicanos (MXN). Las unidades se agrupan en bloques definidos en `data/kpis.json`.
 
 La actualización del día solo toca [`data/kpis.json`](data/kpis.json). El navegador calcula los porcentajes al abrir la página.
 
@@ -9,7 +9,7 @@ La actualización del día solo toca [`data/kpis.json`](data/kpis.json). El nave
 - Totales de la red: ingresos 2026 contra la meta, avance, crecimiento vs 2025 y vs 2024, y venta.
 - Gráfica de avance de meta por unidad.
 - Tabla por unidad, ordenable. La primera columna se queda fija al desplazar en horizontal.
-- Selector de unidad. **Global** es el total de la red. Cada pastilla sale del nombre en `unidades`; no está escrita en el HTML. Al elegir una unidad, las tarjetas, la gráfica y la tabla quedan en esa unidad. La elección vive en el hash (`#coapa`, `#la-salle`, `#casa-blanca`) y se puede compartir. Vacío o `#global` es la red. Un hash que no coincide deja la vista global.
+- Selector de bloque y, debajo, de unidad. Los nombres salen de `bloques` y `unidades`; no están escritos en el HTML. **Todo** suma todos los bloques. Dentro de un bloque, **Global** es la suma de ese bloque. La elección vive en el hash (`#fit/coapa`, `#fit-go`, `#alcaldias`) y se puede compartir. Vacío o `#todo` es la vista de todos. Un hash de una sola unidad, como `#coapa`, sigue abriendo esa unidad. Un hash que no coincide deja la vista Todo.
 - Tema claro u oscuro. El botón de sol o luna está en el encabezado. Sin elección guardada, sigue `prefers-color-scheme`. La elección se guarda en `localStorage` (`fit-integra-tema`) y se aplica antes de pintar, para no parpadear.
 - Columnas vacías en las 11 unidades, en «Pendiente de captura», no como ceros.
 - Un asterisco marca **dato anterior**: la corrida no trajo ese campo y se conservó el último número, en vez de publicarlo como si fuera de hoy.
@@ -22,9 +22,10 @@ Están verificadas contra Notion. No van en el JSON.
 | Indicador | Fórmula |
 | --- | --- |
 | Avance de meta | Ingresos 2026 ÷ Meta |
-| Crecimiento vs 2025 | Ingresos 2026 ÷ Ingresos 2025 − 1 |
-| Crecimiento vs 2024 | Ingresos 2026 ÷ Ingresos 2024 − 1. Si ingresos 2024 es `0`, el resultado es −100%. |
-| % Venta | Venta ÷ Ingresos 2026. Si venta es `null`, cuenta como 0. |
+| Crecimiento vs 2025 | Ingresos 2026 ÷ Ingresos 2025 − 1. En Todo o en un bloque solo entran unidades con historia. |
+| Crecimiento vs 2024 | Ingresos 2026 ÷ Ingresos 2024 − 1. Si ingresos 2024 es `0`, el resultado es −100%. Sin historia, queda pendiente y no entra al total. |
+| % Venta | Venta ÷ Ingresos 2026, solo en bloques con `aplica_venta: true`. Si venta es `null`, cuenta como 0. Si `aplica_venta` es `false`, no entra y se muestra «No aplica». |
+| Avance de un bloque | Suma de ingresos ÷ suma de metas, solo unidades que traen los dos. Una unidad sin meta, o con meta pero sin ingresos, no mueve el porcentaje. |
 
 No se calculan altas, bajas, tasas, ticket, costo por conversación ni los porcentajes de canal. Esas fórmulas no quedaron verificadas. El estatus es manual.
 
@@ -38,9 +39,18 @@ No se calculan altas, bajas, tasas, ticket, costo por conversación ni los porce
   "ultima_actualizacion": "2026-10-21",
   "fuente": "Notion · Resumen Comercial Octubre 26",
   "moneda": "MXN",
+  "bloques": [
+    { "id": "fit", "nombre": "Fit", "aplica_venta": true },
+    { "id": "fit-go", "nombre": "Fit&Go", "aplica_venta": false },
+    { "id": "alcaldias", "nombre": "Alcaldías", "aplica_venta": false }
+  ],
   "unidades": []
 }
 ```
+
+`bloques` arma las pastillas de arriba. `id` es el tramo del hash (`#fit`, `#fit-go`, `#alcaldias`). `aplica_venta: false` significa que la venta no se captura: la página dice «No aplica» y no la suma ni la pone en pendiente.
+
+Cada unidad lleva `bloque` con el `id` de su bloque. Un campo en `null` es «sin captura», nunca un cero inventado. Si todavía no hay ingresos o meta, déjalos en `null`.
 
 `ultima_actualizacion` acepta fecha (`2026-10-22`) o fecha con hora del centro de México (`2026-10-21T22:00:00-06:00`). México no cambia de horario: el desfase es `-06:00`.
 
@@ -55,6 +65,7 @@ Cada unidad lleva insumos. `null` es «sin captura». `0` es un cero real (Tepet
 | JSON | Columna en Notion |
 | --- | --- |
 | `unidad` | Unidad |
+| `bloque` | Id del bloque (`fit`, `fit-go`, `alcaldias`) |
 | `meta` | Meta |
 | `ingresos_2026` | Ingresos 2026 |
 | `ingresos_2025` | Ingresos 2025 |
@@ -81,7 +92,7 @@ Cada unidad lleva insumos. `null` es «sin captura». `0` es un cero real (Tepet
 
 Valores de `status` para el color de la etiqueta: `Hasta 50%`, `Hasta 75%`, `Hasta 90%`, `Hasta 99%`, `100%+`. Otro texto se muestra igual, sin color de escala.
 
-No pongas en el archivo avance, crecimientos, % de venta ni el resto de fórmulas. Si un insumo que hoy está en `null` se llena en todas o en alguna unidad, la columna aparece sola en la tabla.
+No pongas en el archivo avance, crecimientos, % de venta ni el resto de fórmulas. Si un insumo que hoy está en `null` se llena en todas o en alguna unidad, la columna aparece sola en la tabla. `gastos_sin_inversion` es la excepción: se queda en el JSON y, si hay captura, la suma sale en «Otras cifras», no como columna.
 
 El orden del arreglo es el de la tabla de Notion y sirve de desempate al ordenar.
 
@@ -89,9 +100,9 @@ El orden del arreglo es el de la tabla de Notion y sirve de desempate al ordenar
 
 La fuente de ingresos 2026 y venta es el envío de KPI Guy, no Notion. Alrededor de las **7:30 a. m.** y las **8:30 p. m.**, hora del centro de México, se actualizan esos dos campos. Las metas no se tocan salvo que el envío las cambie.
 
-1. Edita `ingresos_2026` y `venta` de las unidades que sí vengan en la corrida.
+1. Edita `ingresos_2026` y, si el bloque tiene `aplica_venta: true`, `venta` de las unidades que sí vengan en la corrida.
 2. Si un campo con número no viene, conserva el valor anterior y agrégalo a `dato_anterior`. No escribas `0`.
-3. Si la venta sigue vacía, déjala en `null` y no la pongas en `dato_anterior`.
+3. Si la venta sigue vacía y el bloque sí la usa, déjala en `null` y no la pongas en `dato_anterior`. Si `aplica_venta` es `false`, no captures venta.
 4. Cambia `ultima_actualizacion`, por ejemplo `2026-10-21T22:00:00-06:00`.
 5. Si cambia el rango, ajusta `periodo` y `corte` (por ejemplo `01/10/2026-21/10/2026`).
 6. Haz commit y push a `main`. No hay build. Recarga el sitio; la página pide el JSON sin caché.

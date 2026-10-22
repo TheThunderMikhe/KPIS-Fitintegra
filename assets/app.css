@@ -36,7 +36,9 @@ html {
   --delta-zero: #0f172a;
   --b50: #991b1b;
   --b75: #9a3412;
-  --b90: #92400e;
+  --b90: #854d0e;
+  --band-90: #f59e0b;
+  --band-90-ink: #1c1917;
   --b99: #065f46;
   --b100: #1e3a8a;
   --scroll-track: #f1f5f9;
@@ -63,9 +65,9 @@ html {
   --badge-75-bg: #ffedd5;
   --badge-75-fg: #9a3412;
   --badge-75-bd: #fdba74;
-  --badge-90-bg: #fef3c7;
-  --badge-90-fg: #92400e;
-  --badge-90-bd: #fcd34d;
+  --badge-90-bg: #f59e0b;
+  --badge-90-fg: #1c1917;
+  --badge-90-bd: #b45309;
   --badge-99-bg: #d1fae5;
   --badge-99-fg: #065f46;
   --badge-99-bd: #6ee7b7;
@@ -109,7 +111,9 @@ html[data-theme="dark"] {
   --delta-zero: #f8fafc;
   --b50: #fca5a5;
   --b75: #fdba74;
-  --b90: #fcd34d;
+  --b90: #fde047;
+  --band-90: #f59e0b;
+  --band-90-ink: #1c1917;
   --b99: #6ee7b7;
   --b100: #93c5fd;
   --scroll-track: #0b1220;
@@ -136,9 +140,9 @@ html[data-theme="dark"] {
   --badge-75-bg: #7c2d12;
   --badge-75-fg: #ffedd5;
   --badge-75-bd: #fdba74;
-  --badge-90-bg: #78350f;
-  --badge-90-fg: #fef3c7;
-  --badge-90-bd: #fcd34d;
+  --badge-90-bg: #f59e0b;
+  --badge-90-fg: #1c1917;
+  --badge-90-bd: #b45309;
   --badge-99-bg: #064e3b;
   --badge-99-fg: #d1fae5;
   --badge-99-bd: #6ee7b7;
@@ -379,6 +383,10 @@ html[data-theme="dark"] .icon-btn .icon-sun {
   max-width: 100%;
 }
 
+.block-switch {
+  margin-bottom: 0.55rem;
+}
+
 .unit-pill {
   appearance: none;
   border: 1px solid var(--border-strong);
@@ -528,7 +536,7 @@ html[data-theme="dark"] .icon-btn .icon-sun {
 .fill-75,
 .swatch-75 { background: #c2410c; }
 .fill-90,
-.swatch-90 { background: #b45309; }
+.swatch-90 { background: var(--band-90); }
 .fill-99,
 .swatch-99 { background: #047857; }
 .fill-100,
@@ -717,6 +725,20 @@ tfoot td {
   border-top: 2px solid var(--border-strong);
   border-bottom: 0;
   font-weight: 700;
+}
+
+tfoot tr.is-subtotal th,
+tfoot tr.is-subtotal td {
+  background: var(--row);
+  font-weight: 600;
+  border-top-width: 1px;
+}
+
+.no-aplica {
+  color: var(--text-muted);
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 0.75rem;
+  font-weight: 600;
 }
 
 .unidad-nombre {

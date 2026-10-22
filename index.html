@@ -64,7 +64,8 @@
     <div class="wrap stack">
       <div id="error-banner" class="error-banner" role="alert" hidden></div>
 
-      <nav class="unit-bar no-print" aria-label="Elegir unidad">
+      <nav class="unit-bar no-print" aria-label="Elegir bloque y unidad">
+        <div id="block-switch" class="unit-switch block-switch" role="group" aria-label="Bloque"></div>
         <div id="unit-switch" class="unit-switch" role="group" aria-label="Unidad"></div>
       </nav>
 
@@ -87,6 +88,7 @@
               <span id="kpi-bar" class="fill"></span>
             </div>
             <p id="kpi-faltante" class="kpi-note"></p>
+            <p id="nota-cobertura" class="kpi-note" hidden></p>
             <p id="nota-anterior-ingresos" class="kpi-note" hidden></p>
           </article>
 
@@ -183,10 +185,10 @@
             <summary>Qué se calcula en esta página y qué no</summary>
             <p><strong>Sí, con fórmula verificada contra Notion:</strong></p>
             <ul>
-              <li><code>Avance de meta</code> = Ingresos 2026 ÷ Meta</li>
-              <li><code>Crecimiento vs 2025</code> = Ingresos 2026 ÷ Ingresos 2025 − 1</li>
-              <li><code>Crecimiento vs 2024</code> = Ingresos 2026 ÷ Ingresos 2024 − 1. Si los ingresos 2024 son 0, el resultado es −100%.</li>
-              <li><code>% Venta</code> = Venta ÷ Ingresos 2026. Si la venta está vacía, cuenta como 0.</li>
+              <li><code>Avance de meta</code> = Ingresos 2026 ÷ Meta. Solo entran unidades que traen los dos números. Una meta sin ingresos, o ingresos sin meta, no mueven el porcentaje.</li>
+              <li><code>Crecimiento vs 2025</code> = Ingresos 2026 ÷ Ingresos 2025 − 1. En un total solo entran unidades con historia. Sin historia, el crecimiento queda pendiente y no mueve el porcentaje.</li>
+              <li><code>Crecimiento vs 2024</code> = Ingresos 2026 ÷ Ingresos 2024 − 1. Si los ingresos 2024 son 0, el resultado es −100%. Sin historia, queda pendiente y no entra al total.</li>
+              <li><code>% Venta</code> = Venta ÷ Ingresos 2026. Si la venta está vacía y el bloque sí la usa, cuenta como 0. Si el bloque trae <code>aplica_venta: false</code>, la venta no entra y se muestra «No aplica».</li>
             </ul>
             <p><strong>No se calcula aquí.</strong> Altas totales, bajas, altas netas, porcentaje de altas digitales, tasa de retención, tasa de cancelación, ticket promedio, costo por conversación, porcentaje de conversión, porcentajes de recurrente, recuperado, adelantado, retail, eventos, agregadores y domiciliado, y la suma de ingresos. Esas fórmulas de Notion no quedaron verificadas, o este corte no tiene los insumos. Publicarlas sería presentar un cero como si fuera un resultado.</p>
             <p>El estatus se muestra tal como se capturó. No se recalcula con el avance: una unidad puede decir «Hasta 50%» y traer otro porcentaje.</p>
