@@ -4,6 +4,7 @@
    avance = ingresos_2026 / meta
    crec. vs 2025 = ingresos_2026 / ingresos_2025 - 1
    crec. vs 2024 = ingresos_2026 / ingresos_2024 - 1, o -1 si la base es 0
+   En un total, el crecimiento solo suma unidades que traen el año base.
    % venta = venta / ingresos_2026, y la venta vacía cuenta como 0
    El estatus no se recalcula. */
 
@@ -84,15 +85,19 @@ const THEME_KEY = "fit-integra-tema";
 
 let currentRows = [];
 let currentCols = [];
+let currentBlocks = [];
+let currentView = { block: null, unit: null, pool: [] };
 let sortState = { id: "avance", dir: "desc" };
 let avanceChart = null;
 let lastNarrow = null;
 let focusSlug = null;
+let focusKind = null;
 
 document.getElementById("btn-imprimir").addEventListener("click", () => window.print());
 document.getElementById("btn-tema").addEventListener("click", toggleTheme);
 document.getElementById("tabla-head").addEventListener("click", onSort);
 document.getElementById("unit-switch").addEventListener("click", onUnitClick);
+document.getElementById("block-switch").addEventListener("click", onBlockClick);
 window.addEventListener("hashchange", () => {
   if (currentRows.length) applySelection();
 });
@@ -123,6 +128,7 @@ function render(data) {
   if (!data || !Array.isArray(data.unidades)) {
     throw new Error("data/kpis.json no trae la lista unidades.");
   }
+  currentBlocks = normalizeBlocks(data.bloques);
   const rows = data.unidades.map(derive).filter(Boolean);
   if (!rows.length) {
     throw new Error("data/kpis.json no trae unidades con nombre.");
@@ -133,6 +139,21 @@ function render(data) {
   applySelection();
   document.getElementById("error-banner").hidden = true;
   document.getElementById("contenido").setAttribute("aria-busy", "false");
+}
+
+function normalizeBlocks(list) {
+  if (!Array.isArray(list)) return [];
+  return list.map((item) => {
+    const id = String(item && item.id || "").trim();
+    const nombre = String(item && (item.nombre || item.id) || "").trim();
+    if (!id || !nombre) return null;
+    return {
+      id,
+      nombre,
+      slug: slugify(id),
+      aplicaVenta: !(item && item.aplica_venta === false),
+    };
+  }).filter(Boolean);
 }
 
 function assignSlugs(rows) {
@@ -169,20 +190,56 @@ function readHash() {
   }
 }
 
-function activeUnit() {
-  const slug = readHash();
-  if (!slug || slug === "global") return null;
-  return currentRows.find((row) => row.slug === slug) || null;
+function blockById(id) {
+  return currentBlocks.find((block) => block.id === id) || null;
+}
+
+function readSelection() {
+  const raw = readHash();
+  if (!raw || raw === "todo" || raw === "global") {
+    return { block: null, unit: null, known: !raw || raw === "todo" || raw === "global" };
+  }
+  const parts = raw.split("/").map((part) => part.trim()).filter(Boolean);
+  if (parts.length >= 2) {
+    const block = currentBlocks.find((item) => item.slug === parts[0]);
+    if (!block) return { block: null, unit: null, known: false };
+    if (parts[1] === "global") return { block, unit: null, known: true };
+    const unit = currentRows.find((row) => row.slug === parts[1] && row.bloque === block.id) || null;
+    return { block, unit, known: true };
+  }
+  const block = currentBlocks.find((item) => item.slug === parts[0]);
+  if (block) return { block, unit: null, known: true };
+  const unit = currentRows.find((row) => row.slug === parts[0]) || null;
+  if (unit) return { block: blockById(unit.bloque), unit, known: true };
+  return { block: null, unit: null, known: false };
+}
+
+function hashFor(block, unit) {
+  if (unit) return (block ? block.slug : unit.blockSlug) + "/" + unit.slug;
+  if (block) return block.slug;
+  return "todo";
+}
+
+function poolFor(block) {
+  if (!block) return currentRows;
+  return currentRows.filter((row) => row.bloque === block.id);
 }
 
 function applySelection() {
-  const unit = activeUnit();
-  paintSwitch(unit);
-  paintScope(unit);
-  const rows = unit ? [unit] : currentRows;
+  const selection = readSelection();
+  const block = selection.block;
+  const unit = selection.unit;
+  if (selection.known && readHash() && readHash() !== hashFor(block, unit)) {
+    history.replaceState(null, "", "#" + hashFor(block, unit));
+  }
+  const pool = poolFor(block);
+  currentView = { block, unit, pool };
+  const rows = unit ? [unit] : pool;
+  paintSwitch(block, unit, pool);
+  paintScope(block, unit, pool);
   paintNetwork(rows, unit);
   paintOther(rows, unit);
-  renderChart(currentRows, unit);
+  renderChart(pool, unit);
   currentCols = buildColumns(rows);
   if (!currentCols.some((col) => col.id === sortState.id)) {
     const first = currentCols[0];
@@ -192,62 +249,114 @@ function applySelection() {
   paintPending(rows, unit);
 }
 
+function chooseHash(next, kind, slug) {
+  focusKind = kind;
+  focusSlug = slug;
+  const current = readHash() || "todo";
+  if (current === next) {
+    applySelection();
+    return;
+  }
+  location.hash = next;
+}
+
+function onBlockClick(event) {
+  const button = event.target.closest("button[data-block]");
+  if (!button) return;
+  const slug = button.dataset.block;
+  chooseHash(slug === "todo" ? "todo" : slug, "bloque", slug);
+}
+
 function onUnitClick(event) {
   const button = event.target.closest("button[data-slug]");
   if (!button) return;
   const slug = button.dataset.slug;
-  focusSlug = slug;
-  const current = readHash() || "global";
-  if (current === slug) {
-    applySelection();
+  if (slug === "global") {
+    const block = currentView.block;
+    chooseHash(block ? block.slug : "todo", "unidad", slug);
     return;
   }
-  location.hash = slug;
+  const row = currentView.pool.find((item) => item.slug === slug);
+  const block = (row && blockById(row.bloque)) || currentView.block;
+  chooseHash(hashFor(block, row), "unidad", slug);
 }
 
-function paintSwitch(unit) {
-  const host = document.getElementById("unit-switch");
+function paintPills(host, items, pressedSlug, dataAttr) {
   host.replaceChildren();
-  const items = [{ slug: "global", label: "Global" }].concat(
-    currentRows.map((row) => ({ slug: row.slug, label: row.unidad }))
-  );
   items.forEach((item) => {
     const button = document.createElement("button");
     button.type = "button";
     button.className = "unit-pill";
-    button.dataset.slug = item.slug;
+    button.dataset[dataAttr] = item.slug;
     button.textContent = item.label;
-    const pressed = unit ? item.slug === unit.slug : item.slug === "global";
-    button.setAttribute("aria-pressed", pressed ? "true" : "false");
+    button.setAttribute("aria-pressed", item.slug === pressedSlug ? "true" : "false");
     host.append(button);
   });
-  if (focusSlug) {
-    const again = host.querySelector('[data-slug="' + CSS.escape(focusSlug) + '"]');
+}
+
+function paintSwitch(block, unit, pool) {
+  paintPills(
+    document.getElementById("block-switch"),
+    [{ slug: "todo", label: "Todo" }].concat(currentBlocks.map((item) => ({ slug: item.slug, label: item.nombre }))),
+    block ? block.slug : "todo",
+    "block"
+  );
+  paintPills(
+    document.getElementById("unit-switch"),
+    [{ slug: "global", label: "Global" }].concat(pool.map((row) => ({ slug: row.slug, label: row.unidad }))),
+    unit ? unit.slug : "global",
+    "slug"
+  );
+  if (focusSlug && focusKind) {
+    const host = document.getElementById(focusKind === "bloque" ? "block-switch" : "unit-switch");
+    const attr = focusKind === "bloque" ? "data-block" : "data-slug";
+    const again = host.querySelector("[" + attr + '="' + CSS.escape(focusSlug) + '"]');
     focusSlug = null;
+    focusKind = null;
     if (again) again.focus();
   }
 }
 
-function paintScope(unit) {
-  document.getElementById("titulo-red").textContent = unit ? unit.unidad : "Totales de la red";
+function crecimientoLead(pool) {
+  const conHistoria = pool.filter((row) => row.ingresos_2025 != null || row.ingresos_2024 != null).length;
+  if (!conHistoria) return "Sin historia de 2025 ni 2024: el crecimiento queda pendiente.";
+  if (conHistoria < pool.length) return "El crecimiento solo suma las unidades que traen historia, no el promedio de cada unidad.";
+  return "El crecimiento compara la suma de 2026 con la suma del año base, no el promedio de cada unidad.";
+}
+
+function scopeName(block, unit) {
+  if (unit) return unit.unidad;
+  if (block) return block.nombre;
+  return "Todo";
+}
+
+function paintScope(block, unit, pool) {
+  const nombre = scopeName(block, unit);
+  document.getElementById("titulo-red").textContent = unit ? unit.unidad : block ? "Totales de " + block.nombre : "Totales";
   document.getElementById("lead-red").textContent = unit
-    ? "Cifras de " + unit.unidad + ". Los porcentajes usan las mismas fórmulas que el total de la red."
-    : "Totales de las " + currentRows.length + " unidades. El crecimiento compara la suma de 2026 con la suma del año base, no el promedio de cada unidad.";
+    ? "Cifras de " + unit.unidad + ". Los porcentajes usan las mismas fórmulas que el total."
+    : block
+      ? "Totales de las " + pool.length + " unidades de " + block.nombre + ". " + crecimientoLead(pool)
+      : "Suma de " + lista(currentBlocks.map((item) => item.nombre)) + ". " + crecimientoLead(pool);
   document.getElementById("titulo-otras").textContent = unit ? "Otras cifras" : "Otras cifras con captura";
   document.getElementById("lead-otras").textContent = unit
     ? "Solo lo que " + unit.unidad + " trae capturado. No se calcula utilidad."
     : "Solo se suman las unidades que traen dato. No se calcula utilidad.";
-  document.getElementById("titulo-tabla").textContent = unit ? unit.unidad : "Detalle por unidad";
+  document.getElementById("titulo-tabla").textContent = unit ? unit.unidad : block ? block.nombre : "Detalle por unidad";
   document.getElementById("lead-tabla").textContent = unit
     ? "Cifras de " + unit.unidad + ". El estatus es captura manual y puede no coincidir con el avance."
-    : "Selecciona un encabezado para ordenar. El estatus es captura manual y puede no coincidir con el avance.";
+    : block
+      ? "Unidades de " + block.nombre + ". Selecciona un encabezado para ordenar. El estatus es captura manual y puede no coincidir con el avance."
+      : "Selecciona un encabezado para ordenar. Los subtotales por bloque están al pie. El estatus es captura manual y puede no coincidir con el avance.";
   const periodo = document.getElementById("periodo-badge").textContent;
   document.getElementById("titulo-grafica").textContent = unit
     ? "Avance de meta · " + unit.unidad
-    : "Avance de meta por unidad";
+    : "Avance de meta · " + nombre;
+  const sinAvance = pool.some((row) => row.avance == null);
   document.getElementById("chart-lead").textContent = unit
-    ? unit.unidad + " va en color. El resto de la red queda en gris, de mayor a menor avance."
-    : "Cada barra es ingresos 2026 entre la meta. " + periodo + ". Ordenado de mayor a menor avance.";
+    ? unit.unidad + " va en color. El resto queda en gris, de mayor a menor avance."
+    : "Cada barra es ingresos 2026 entre la meta. " + periodo + ". Ordenado de mayor a menor avance."
+      + (sinAvance ? " Las unidades sin ingresos o sin meta no entran." : "");
 
   const status = document.getElementById("kpi-status");
   status.replaceChildren();
@@ -280,7 +389,7 @@ function setTheme(theme, persist) {
     }
   }
   syncThemeButton();
-  if (currentRows.length) renderChart(currentRows, activeUnit());
+  if (currentView.pool.length) renderChart(currentView.pool, currentView.unit);
 }
 
 function toggleTheme() {
@@ -322,7 +431,12 @@ function derive(raw) {
   row.avance = ingresos == null || meta == null || meta === 0 ? null : ingresos / meta;
   row.crec25 = ingresos == null || base25 == null || base25 === 0 ? null : ingresos / base25 - 1;
   row.crec24 = ingresos == null || base24 == null ? null : (base24 === 0 ? -1 : ingresos / base24 - 1);
-  row.pctVenta = ingresos == null || ingresos === 0 ? null : (venta == null ? 0 : venta) / ingresos;
+  row.bloque = String(raw.bloque || "").trim();
+  const block = blockById(row.bloque);
+  row.aplicaVenta = block ? block.aplicaVenta : true;
+  row.blockSlug = block ? block.slug : slugify(row.bloque || "fit");
+  row.blockNombre = block ? block.nombre : (row.bloque || "");
+  row.pctVenta = !row.aplicaVenta || ingresos == null || ingresos === 0 ? null : (venta == null ? 0 : venta) / ingresos;
   const anterior = Array.isArray(raw.dato_anterior) ? raw.dato_anterior : [];
   row.anterior = new Set(anterior.filter((key) => typeof key === "string" && key.trim()).map((key) => key.trim()));
   return row;
@@ -399,19 +513,24 @@ function formatStamp(value) {
 }
 
 function paintNetwork(rows, unit) {
+  const withIngresos = rows.filter((row) => row.ingresos_2026 != null);
+  const withMeta = rows.filter((row) => row.meta != null && row.meta !== 0);
   const paired = rows.filter((row) => row.ingresos_2026 != null && row.meta != null && row.meta !== 0);
-  const ingresos = paired.reduce((sum, row) => sum + row.ingresos_2026, 0);
-  const meta = paired.reduce((sum, row) => sum + row.meta, 0);
-  const avance = meta === 0 ? null : ingresos / meta;
-  const gap = meta - ingresos;
+  const ingresos = withIngresos.reduce((sum, row) => sum + row.ingresos_2026, 0);
+  const metaVista = withMeta.reduce((sum, row) => sum + row.meta, 0);
+  const metaAvance = paired.reduce((sum, row) => sum + row.meta, 0);
+  const ingresosAvance = paired.reduce((sum, row) => sum + row.ingresos_2026, 0);
+  const avance = paired.length && metaAvance !== 0 ? ingresosAvance / metaAvance : null;
+  const gap = metaAvance - ingresosAvance;
+  const metaFuera = metaVista - metaAvance;
 
   const ingresosAnterior = unit ? esAnterior(unit, "ingresos_2026") : false;
   setFigure(
     document.getElementById("kpi-ingresos"),
-    paired.length ? moneyFmt.format(ingresos) : "—",
-    ingresosAnterior && paired.length
+    withIngresos.length ? moneyFmt.format(ingresos) : "—",
+    ingresosAnterior && withIngresos.length
   );
-  document.getElementById("kpi-meta").textContent = paired.length ? "Meta " + moneyFmt.format(meta) : "Sin meta capturada";
+  document.getElementById("kpi-meta").textContent = withMeta.length ? "Meta " + moneyFmt.format(paired.length ? metaAvance : metaVista) : "Sin meta capturada";
   setAvance(document.getElementById("kpi-avance"), avance, ingresosAnterior);
 
   const track = document.getElementById("kpi-track");
@@ -429,9 +548,7 @@ function paintNetwork(rows, unit) {
     track.setAttribute("aria-valuenow", String(Math.round(points)));
     track.setAttribute("aria-valuetext", pctFmt.format(avance));
   }
-  document.getElementById("etiqueta-avance").textContent = unit
-    ? "Avance de meta de " + unit.unidad
-    : "Avance de meta de la red";
+  document.getElementById("etiqueta-avance").textContent = "Avance de meta de " + (unit ? unit.unidad : currentView.block ? currentView.block.nombre : "todos los bloques");
 
   const faltante = document.getElementById("kpi-faltante");
   faltante.classList.remove("delta-pos", "delta-neg");
@@ -446,16 +563,17 @@ function paintNetwork(rows, unit) {
   } else {
     faltante.textContent = "En la meta.";
   }
+  paintCobertura(rows, withIngresos.length, paired.length, metaFuera);
   paintAnteriorNote("nota-anterior-ingresos", rows, "ingresos_2026", unit);
 
   const crec25 = networkGrowth(rows, "ingresos_2026", "ingresos_2025", false);
   const crec24 = networkGrowth(rows, "ingresos_2026", "ingresos_2024", true);
   setDelta(document.getElementById("kpi-vs25"), crec25, (value) => growthFmt.format(value));
   setDelta(document.getElementById("kpi-vs24"), crec24, (value) => growthFmt.format(value));
-  const base25 = unit ? "Ingresos 2025" : "Ingresos 2025 de la red";
-  const base24 = unit ? "Ingresos 2024" : "Ingresos 2024 de la red";
-  document.getElementById("kpi-vs25-base").textContent = baseLine(rows, "ingresos_2025", base25);
-  document.getElementById("kpi-vs24-base").textContent = baseLine(rows, "ingresos_2024", base24);
+  const base25 = unit ? "Ingresos 2025" : currentView.block ? "Ingresos 2025 de " + currentView.block.nombre : "Ingresos 2025";
+  const base24 = unit ? "Ingresos 2024" : currentView.block ? "Ingresos 2024 de " + currentView.block.nombre : "Ingresos 2024";
+  document.getElementById("kpi-vs25-base").textContent = baseLine(rows, "ingresos_2025", false, base25);
+  document.getElementById("kpi-vs24-base").textContent = baseLine(rows, "ingresos_2024", true, base24);
 
   const ceros = rows.filter((row) => row.ingresos_2024 === 0).map((row) => row.unidad);
   const nota24 = document.getElementById("nota-2024");
@@ -472,10 +590,21 @@ function paintNetwork(rows, unit) {
     nota24.textContent = "";
   }
 
-  const ventaRows = rows.filter((row) => row.ingresos_2026 != null && row.ingresos_2026 !== 0);
+  const ventaScope = rows.filter((row) => row.aplicaVenta);
+  const notaVenta = document.getElementById("nota-venta");
+  const fuera = blockNames(rows.filter((row) => !row.aplicaVenta));
+  if (!ventaScope.length) {
+    setFigure(document.getElementById("kpi-venta"), "No aplica", false);
+    document.getElementById("kpi-venta-pct").textContent = "";
+    paintAnteriorNote("nota-anterior-venta", [], "venta", null);
+    notaVenta.hidden = false;
+    notaVenta.textContent = "La venta no aplica en este bloque.";
+    return;
+  }
+  const ventaRows = ventaScope.filter((row) => row.ingresos_2026 != null && row.ingresos_2026 !== 0);
   const venta = ventaRows.reduce((sum, row) => sum + (row.venta == null ? 0 : row.venta), 0);
   const baseVenta = ventaRows.reduce((sum, row) => sum + row.ingresos_2026, 0);
-  const ventaVacia = unit && unit.venta == null;
+  const ventaVacia = unit && unit.aplicaVenta && unit.venta == null;
   const ventaAnterior = unit ? esAnterior(unit, "venta") && !ventaVacia : false;
   setFigure(
     document.getElementById("kpi-venta"),
@@ -483,40 +612,99 @@ function paintNetwork(rows, unit) {
     ventaAnterior
   );
   document.getElementById("kpi-venta-pct").textContent = baseVenta ? pctFmt.format(venta / baseVenta) + " de los ingresos 2026" : "";
-  paintAnteriorNote("nota-anterior-venta", rows, "venta", unit);
-  const sinVenta = rows.filter((row) => row.venta == null).length;
-  const notaVenta = document.getElementById("nota-venta");
+  paintAnteriorNote("nota-anterior-venta", ventaScope, "venta", unit);
+  const sinVenta = ventaScope.filter((row) => row.venta == null).length;
   if (unit && unit.venta == null && unit.pctVenta != null) {
     notaVenta.hidden = false;
     notaVenta.textContent = "Sin captura de venta. En el porcentaje cuenta como cero.";
   } else if (!unit && sinVenta) {
     notaVenta.hidden = false;
-    notaVenta.textContent = sinVenta + " de " + rows.length + " unidades sin captura. En el porcentaje cuentan como cero.";
+    notaVenta.textContent = sinVenta + " de " + ventaScope.length + " unidades sin captura. En el porcentaje cuentan como cero."
+      + (fuera ? " " + fuera + ": la venta no aplica." : "");
+  } else if (fuera) {
+    notaVenta.hidden = false;
+    notaVenta.textContent = fuera + ": la venta no aplica.";
   } else {
     notaVenta.hidden = true;
     notaVenta.textContent = "";
   }
 }
 
-function baseLine(rows, key, label) {
-  const sum = sumField(rows, key);
-  if (!sum.present) return "Sin base capturada.";
-  let text = label + ": " + moneyFmt.format(sum.total);
-  if (sum.missing) text += ". Faltan " + sum.missing + " unidades en la base.";
+function blockNames(rows) {
+  const names = [];
+  currentBlocks.forEach((block) => {
+    if (rows.some((row) => row.bloque === block.id) && !names.includes(block.nombre)) names.push(block.nombre);
+  });
+  return lista(names);
+}
+
+function paintCobertura(rows, conIngresos, enAvance, metaFuera) {
+  const note = document.getElementById("nota-cobertura");
+  if (rows.length === 1 && rows[0].ingresos_2026 == null && rows[0].meta != null) {
+    note.hidden = false;
+    note.textContent = "Sin ingresos capturados: la meta todavía no entra al avance.";
+    return;
+  }
+  if (rows.length <= 1) {
+    note.hidden = true;
+    note.textContent = "";
+    return;
+  }
+  const parts = [];
+  const metaSinIngresos = !enAvance && rows.some((row) => row.meta != null);
+  if (conIngresos < rows.length && !metaSinIngresos) {
+    parts.push(conIngresos
+      ? "Ingresos con captura en " + conIngresos + " de " + rows.length + " unidades."
+      : "Ingresos pendientes de captura.");
+  }
+  if (enAvance > 0 && enAvance < rows.length) {
+    parts.push("Avance y faltante sobre " + enAvance + " de " + rows.length + ", las que traen ingresos y meta.");
+  } else if (metaSinIngresos) {
+    parts.push("Sin ingresos capturados: la meta todavía no entra al avance.");
+  }
+  if (metaFuera > 0.5 && enAvance > 0) parts.push("Otra meta capturada, sin ingresos: " + moneyFmt.format(metaFuera) + ".");
+  note.hidden = !parts.length;
+  note.textContent = parts.join(" ");
+}
+
+function baseLine(rows, key, includeZeroBase, label) {
+  const paired = growthPairs(rows, "ingresos_2026", key, includeZeroBase);
+  if (!paired.length) return "Sin base capturada.";
+  const total = paired.reduce((sum, row) => sum + row[key], 0);
+  let text = label + ": " + moneyFmt.format(total);
+  if (paired.length < rows.length) {
+    text += ". Solo " + paired.length + (paired.length === 1 ? " unidad con historia" : " unidades con historia") + ".";
+  }
   return text;
 }
 
-function networkGrowth(rows, actualKey, baseKey, includeZeroBase) {
-  const paired = rows.filter((row) => {
+function growthPairs(rows, actualKey, baseKey, includeZeroBase) {
+  return rows.filter((row) => {
     if (row[actualKey] == null || row[baseKey] == null) return false;
     if (!includeZeroBase && row[baseKey] === 0) return false;
     return true;
   });
+}
+
+function networkGrowth(rows, actualKey, baseKey, includeZeroBase) {
+  const paired = growthPairs(rows, actualKey, baseKey, includeZeroBase);
   if (!paired.length) return null;
   const actual = paired.reduce((sum, row) => sum + row[actualKey], 0);
   const base = paired.reduce((sum, row) => sum + row[baseKey], 0);
   if (base === 0) return includeZeroBase ? -1 : null;
   return actual / base - 1;
+}
+
+function growthTotal(rows, actualKey, baseKey, includeZeroBase) {
+  const value = networkGrowth(rows, actualKey, baseKey, includeZeroBase);
+  const node = growthNode(value);
+  const paired = growthPairs(rows, actualKey, baseKey, includeZeroBase);
+  if (value == null || paired.length === rows.length) return node;
+  const wrap = document.createElement("div");
+  wrap.className = "total-stack";
+  wrap.append(node);
+  wrap.append(noteEl(paired.length === 1 ? "1 con historia" : paired.length + " con historia"));
+  return wrap;
 }
 
 function paintOther(rows, unit) {
@@ -576,17 +764,19 @@ function renderChart(rows, unit) {
       avanceChart.destroy();
       avanceChart = null;
     }
+    canvas.parentElement.style.height = "";
     canvas.hidden = true;
     fallback.hidden = false;
     fallback.textContent = chartRows.length
       ? "No se pudo cargar la gráfica. La tabla de abajo tiene las mismas cifras."
-      : "No hay avances para graficar.";
+      : "No hay avances para graficar. Hacen falta ingresos y meta.";
     return;
   }
 
   canvas.hidden = false;
   fallback.hidden = true;
   lastNarrow = window.matchMedia("(max-width: 640px)").matches;
+  canvas.parentElement.style.height = Math.max(360, chartRows.length * (lastNarrow ? 30 : 34) + 72) + "px";
   const ySize = lastNarrow ? 11 : 12;
   const maxAvance = Math.max.apply(null, chartRows.map((row) => row.avance));
   const xMax = Math.max(1.15, maxAvance * 1.12);
@@ -633,7 +823,8 @@ function renderChart(rows, unit) {
                   "Ingresos 2026: " + moneyFmt.format(row.ingresos_2026) + (esAnterior(row, "ingresos_2026") ? " (dato anterior)" : ""),
                   "Meta: " + moneyFmt.format(row.meta),
                 ];
-                if (row.venta != null) {
+                if (!row.aplicaVenta) lineas.push("Venta: no aplica");
+                else if (row.venta != null) {
                   lineas.push("Venta: " + moneyFmt.format(row.venta) + (esAnterior(row, "venta") ? " (dato anterior)" : ""));
                 }
                 lineas.push("Estatus (manual): " + (row.status || "Sin captura"));
@@ -761,8 +952,8 @@ function metaGuide(chartRows, unit, theme) {
 function onResize() {
   updateScrollHint();
   const narrow = window.matchMedia("(max-width: 640px)").matches;
-  if (narrow === lastNarrow || !currentRows.length) return;
-  renderChart(currentRows, activeUnit());
+  if (narrow === lastNarrow || !currentView.pool.length) return;
+  renderChart(currentView.pool, currentView.unit);
 }
 
 function buildColumns(rows) {
@@ -828,7 +1019,7 @@ function baseColumns() {
       value: (row) => row.crec25,
       visible: (rows) => rows.some((row) => row.crec25 != null),
       render: (row) => growthNode(row.crec25),
-      total: (rows) => growthNode(networkGrowth(rows, "ingresos_2026", "ingresos_2025", false)),
+      total: (rows) => growthTotal(rows, "ingresos_2026", "ingresos_2025", false),
     },
     moneyColumn("ingresos_2024", "Ingresos 2024", "Ingresos del mismo corte en 2024. $0 es un cero real, no un vacío."),
     {
@@ -848,7 +1039,7 @@ function baseColumns() {
         }
         return node;
       },
-      total: (rows) => growthNode(networkGrowth(rows, "ingresos_2026", "ingresos_2024", true)),
+      total: (rows) => growthTotal(rows, "ingresos_2026", "ingresos_2024", true),
     },
     {
       id: "venta",
@@ -859,10 +1050,12 @@ function baseColumns() {
       align: "right",
       hint: "Venta capturada. Vacío no es cero.",
       value: (row) => row.venta,
-      visible: (rows) => rows.some((row) => row.venta != null),
-      render: (row) => moneyCell(row.venta, esAnterior(row, "venta")),
+      visible: (rows) => rows.some((row) => !row.aplicaVenta || row.venta != null),
+      render: (row) => (row.aplicaVenta ? moneyCell(row.venta, esAnterior(row, "venta")) : noAplica()),
       total: (rows) => {
-        const sum = sumField(rows, "venta");
+        const aplicables = rows.filter((row) => row.aplicaVenta);
+        if (!aplicables.length) return noAplica();
+        const sum = sumField(aplicables, "venta");
         return moneyTotal(sum.total, sum.missing);
       },
     },
@@ -874,8 +1067,9 @@ function baseColumns() {
       align: "right",
       hint: "Venta / Ingresos 2026. Si la venta está vacía, cuenta como 0.",
       value: (row) => row.pctVenta,
-      visible: (rows) => rows.some((row) => row.venta != null && row.pctVenta != null),
+      visible: (rows) => rows.some((row) => row.aplicaVenta && row.venta != null && row.pctVenta != null),
       render: (row, flags) => {
+        if (!row.aplicaVenta) return noAplica();
         if (row.pctVenta == null) return dash();
         const node = textEl(pctFmt.format(row.pctVenta));
         if (row.venta == null) {
@@ -885,7 +1079,9 @@ function baseColumns() {
         return node;
       },
       total: (rows) => {
-        const withIncome = rows.filter((row) => row.ingresos_2026 != null && row.ingresos_2026 !== 0);
+        const aplicables = rows.filter((row) => row.aplicaVenta);
+        if (!aplicables.length) return noAplica();
+        const withIncome = aplicables.filter((row) => row.ingresos_2026 != null && row.ingresos_2026 !== 0);
         if (!withIncome.length) return dash();
         const venta = withIncome.reduce((sum, row) => sum + (row.venta == null ? 0 : row.venta), 0);
         const base = withIncome.reduce((sum, row) => sum + row.ingresos_2026, 0);
@@ -1031,15 +1227,15 @@ function paintTable(rows, unit) {
   });
 
   if (!unit) {
-    const totalRow = document.createElement("tr");
-    currentCols.forEach((col, index) => {
-      const cell = document.createElement(index === 0 ? "th" : "td");
-      if (index === 0) cell.scope = "row";
-      if (col.align === "right") cell.classList.add("num");
-      cell.append(col.total(source, flags));
-      totalRow.append(cell);
-    });
-    foot.append(totalRow);
+    const blocksInView = currentBlocks.filter((block) => source.some((row) => row.bloque === block.id));
+    if (!currentView.block && blocksInView.length > 1) {
+      blocksInView.forEach((block) => {
+        foot.append(footerRow(source.filter((row) => row.bloque === block.id), block.nombre, "is-subtotal", flags));
+      });
+      foot.append(footerRow(source, "Todo", "", flags));
+    } else {
+      foot.append(footerRow(source, currentView.block ? currentView.block.nombre : "Total", "", flags));
+    }
   }
 
   const col = currentCols.find((item) => item.id === sortState.id);
@@ -1048,6 +1244,19 @@ function paintTable(rows, unit) {
   paintNotes(flags, source);
   updateScrollHint();
   window.requestAnimationFrame(updateScrollHint);
+}
+
+function footerRow(rows, label, className, flags) {
+  const tr = document.createElement("tr");
+  if (className) tr.className = className;
+  currentCols.forEach((col, index) => {
+    const cell = document.createElement(index === 0 ? "th" : "td");
+    if (index === 0) cell.scope = "row";
+    if (col.align === "right") cell.classList.add("num");
+    cell.append(index === 0 ? textEl(label + " (" + rows.length + ")", "unidad-nombre") : col.total(rows, flags));
+    tr.append(cell);
+  });
+  return tr;
 }
 
 function updateScrollHint() {
@@ -1066,7 +1275,7 @@ function paintNotes(flags, rows) {
     addNote(host, "† " + lista(names) + ": ingresos 2024 en $0. La fórmula verificada devuelve −100%, no un dato vacío.");
   }
   if (flags.double) {
-    const names = rows.filter((row) => row.venta == null && row.pctVenta != null).map((row) => row.unidad);
+    const names = rows.filter((row) => row.aplicaVenta && row.venta == null && row.pctVenta != null).map((row) => row.unidad);
     addNote(host, "‡ " + lista(names) + ": sin venta capturada. La fórmula verificada cuenta ese vacío como 0%.");
   }
   [
@@ -1094,7 +1303,7 @@ function onSort(event) {
   if (!col) return;
   if (sortState.id === id) sortState.dir = sortState.dir === "asc" ? "desc" : "asc";
   else sortState = { id, dir: col.prefer || "desc" };
-  paintTable(activeUnit() ? [activeUnit()] : currentRows, activeUnit());
+  paintTable(currentView.unit ? [currentView.unit] : currentView.pool, currentView.unit);
   const again = document.querySelector('#tabla-head button[data-sort="' + id + '"]');
   if (again) again.focus();
 }
@@ -1129,7 +1338,8 @@ function paintPending(rows, unit) {
   host.replaceChildren();
   const grouped = new Map();
   INPUT_FIELDS.forEach((field) => {
-    if (!rows.every((row) => row[field.key] == null)) return;
+    const applicable = rows.filter((row) => field.key !== "venta" || row.aplicaVenta);
+    if (!applicable.length || !applicable.every((row) => row[field.key] == null)) return;
     if (!grouped.has(field.group)) grouped.set(field.group, []);
     grouped.get(field.group).push(field);
   });
@@ -1220,6 +1430,13 @@ function noteEl(value) {
   const span = document.createElement("span");
   span.className = "cell-note";
   span.textContent = value;
+  return span;
+}
+
+function noAplica() {
+  const span = document.createElement("span");
+  span.className = "no-aplica";
+  span.textContent = "No aplica";
   return span;
 }
 
