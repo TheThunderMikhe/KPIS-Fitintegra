@@ -61,7 +61,7 @@
     {
       "unidad": "Cuemanco",
       "meta": 3392232,
-      "ingresos_2026": 2504615.93,
+      "ingresos_2026": 2589919.13,
       "ingresos_2025": 2793259,
       "ingresos_2024": 2264406,
       "usuarios_activos_mes_anterior": 2768,
@@ -82,13 +82,12 @@
       "cargos_domiciliados": null,
       "gastos_sin_inversion": 3323923,
       "numero": null,
-      "dato_anterior": ["ingresos_2026"],
       "status": "Hasta 75%"
     },
     {
       "unidad": "La Salle",
       "meta": 1534400,
-      "ingresos_2026": 1061716.46,
+      "ingresos_2026": 1070524.86,
       "ingresos_2025": 1381184,
       "ingresos_2024": 1254548,
       "usuarios_activos_mes_anterior": 1096,
@@ -109,7 +108,6 @@
       "cargos_domiciliados": null,
       "gastos_sin_inversion": 2198979,
       "numero": null,
-      "dato_anterior": ["ingresos_2026"],
       "status": "Hasta 50%"
     },
     {
