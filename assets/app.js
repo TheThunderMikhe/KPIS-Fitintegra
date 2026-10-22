@@ -323,7 +323,43 @@ function derive(raw) {
   row.crec25 = ingresos == null || base25 == null || base25 === 0 ? null : ingresos / base25 - 1;
   row.crec24 = ingresos == null || base24 == null ? null : (base24 === 0 ? -1 : ingresos / base24 - 1);
   row.pctVenta = ingresos == null || ingresos === 0 ? null : (venta == null ? 0 : venta) / ingresos;
+  const anterior = Array.isArray(raw.dato_anterior) ? raw.dato_anterior : [];
+  row.anterior = new Set(anterior.filter((key) => typeof key === "string" && key.trim()).map((key) => key.trim()));
   return row;
+}
+
+function esAnterior(row, key) {
+  return !!(row && row.anterior && row.anterior.has(key));
+}
+
+function anteriorMark() {
+  const sup = document.createElement("sup");
+  sup.className = "marca";
+  sup.title = "Dato anterior";
+  sup.textContent = "*";
+  return sup;
+}
+
+function setFigure(el, text, anterior) {
+  el.replaceChildren(document.createTextNode(text));
+  if (anterior) el.append(anteriorMark());
+}
+
+function paintAnteriorNote(id, rows, key, unit) {
+  const note = document.getElementById(id);
+  const names = rows.filter((row) => esAnterior(row, key)).map((row) => row.unidad);
+  if (unit && esAnterior(unit, key)) {
+    note.hidden = false;
+    note.textContent = "Dato anterior.";
+    return;
+  }
+  if (!unit && names.length) {
+    note.hidden = false;
+    note.textContent = "Dato anterior en " + lista(names) + ".";
+    return;
+  }
+  note.hidden = true;
+  note.textContent = "";
 }
 
 function num(value) {
@@ -369,9 +405,14 @@ function paintNetwork(rows, unit) {
   const avance = meta === 0 ? null : ingresos / meta;
   const gap = meta - ingresos;
 
-  document.getElementById("kpi-ingresos").textContent = paired.length ? moneyFmt.format(ingresos) : "—";
+  const ingresosAnterior = unit ? esAnterior(unit, "ingresos_2026") : false;
+  setFigure(
+    document.getElementById("kpi-ingresos"),
+    paired.length ? moneyFmt.format(ingresos) : "—",
+    ingresosAnterior && paired.length
+  );
   document.getElementById("kpi-meta").textContent = paired.length ? "Meta " + moneyFmt.format(meta) : "Sin meta capturada";
-  setAvance(document.getElementById("kpi-avance"), avance);
+  setAvance(document.getElementById("kpi-avance"), avance, ingresosAnterior);
 
   const track = document.getElementById("kpi-track");
   const bar = document.getElementById("kpi-bar");
@@ -405,6 +446,7 @@ function paintNetwork(rows, unit) {
   } else {
     faltante.textContent = "En la meta.";
   }
+  paintAnteriorNote("nota-anterior-ingresos", rows, "ingresos_2026", unit);
 
   const crec25 = networkGrowth(rows, "ingresos_2026", "ingresos_2025", false);
   const crec24 = networkGrowth(rows, "ingresos_2026", "ingresos_2024", true);
@@ -434,8 +476,14 @@ function paintNetwork(rows, unit) {
   const venta = ventaRows.reduce((sum, row) => sum + (row.venta == null ? 0 : row.venta), 0);
   const baseVenta = ventaRows.reduce((sum, row) => sum + row.ingresos_2026, 0);
   const ventaVacia = unit && unit.venta == null;
-  document.getElementById("kpi-venta").textContent = ventaVacia || !ventaRows.length ? "—" : moneyFmt.format(venta);
+  const ventaAnterior = unit ? esAnterior(unit, "venta") && !ventaVacia : false;
+  setFigure(
+    document.getElementById("kpi-venta"),
+    ventaVacia || !ventaRows.length ? "—" : moneyFmt.format(venta),
+    ventaAnterior
+  );
   document.getElementById("kpi-venta-pct").textContent = baseVenta ? pctFmt.format(venta / baseVenta) + " de los ingresos 2026" : "";
+  paintAnteriorNote("nota-anterior-venta", rows, "venta", unit);
   const sinVenta = rows.filter((row) => row.venta == null).length;
   const notaVenta = document.getElementById("nota-venta");
   if (unit && unit.venta == null && unit.pctVenta != null) {
@@ -581,11 +629,15 @@ function renderChart(rows, unit) {
               },
               afterBody(items) {
                 const row = chartRows[items[0].dataIndex];
-                return [
-                  "Ingresos 2026: " + moneyFmt.format(row.ingresos_2026),
+                const lineas = [
+                  "Ingresos 2026: " + moneyFmt.format(row.ingresos_2026) + (esAnterior(row, "ingresos_2026") ? " (dato anterior)" : ""),
                   "Meta: " + moneyFmt.format(row.meta),
-                  "Estatus (manual): " + (row.status || "Sin captura"),
                 ];
+                if (row.venta != null) {
+                  lineas.push("Venta: " + moneyFmt.format(row.venta) + (esAnterior(row, "venta") ? " (dato anterior)" : ""));
+                }
+                lineas.push("Estatus (manual): " + (row.status || "Sin captura"));
+                return lineas;
               },
             },
           },
@@ -762,7 +814,7 @@ function baseColumns() {
       hint: "Ingresos 2026 / Meta.",
       value: (row) => row.avance,
       visible: (rows) => rows.some((row) => row.avance != null),
-      render: (row) => avanceNode(row.avance),
+      render: (row) => avanceNode(row.avance, esAnterior(row, "ingresos_2026")),
       total: (rows) => avanceNode(networkAvance(rows)),
     },
     moneyColumn("ingresos_2025", "Ingresos 2025", "Ingresos del mismo corte en 2025."),
@@ -808,7 +860,7 @@ function baseColumns() {
       hint: "Venta capturada. Vacío no es cero.",
       value: (row) => row.venta,
       visible: (rows) => rows.some((row) => row.venta != null),
-      render: (row) => moneyCell(row.venta),
+      render: (row) => moneyCell(row.venta, esAnterior(row, "venta")),
       total: (rows) => {
         const sum = sumField(rows, "venta");
         return moneyTotal(sum.total, sum.missing);
@@ -890,7 +942,7 @@ function moneyColumn(key, label, hint) {
     hint,
     value: (row) => row[key],
     visible: (rows) => rows.some((row) => row[key] != null),
-    render: (row) => moneyCell(row[key]),
+    render: (row) => moneyCell(row[key], esAnterior(row, key)),
     total: (rows) => {
       const sum = sumField(rows, key);
       if (!sum.present) return dash();
@@ -910,7 +962,7 @@ function columnFromField(field) {
     hint: field.hint || "",
     value: (row) => row[field.key],
     visible: () => true,
-    render: (row) => (field.kind === "count" ? countCell(row[field.key]) : moneyCell(row[field.key])),
+    render: (row) => (field.kind === "count" ? countCell(row[field.key]) : moneyCell(row[field.key], esAnterior(row, field.key))),
     total: (rows) => {
       const sum = sumField(rows, field.key);
       if (!sum.present) return dash();
@@ -1017,6 +1069,14 @@ function paintNotes(flags, rows) {
     const names = rows.filter((row) => row.venta == null && row.pctVenta != null).map((row) => row.unidad);
     addNote(host, "‡ " + lista(names) + ": sin venta capturada. La fórmula verificada cuenta ese vacío como 0%.");
   }
+  [
+    ["ingresos_2026", "Ingresos 2026"],
+    ["venta", "Venta"],
+  ].forEach(([key, label]) => {
+    const names = rows.filter((row) => esAnterior(row, key)).map((row) => row.unidad);
+    if (!names.length) return;
+    addNote(host, "* " + label + " con dato anterior: " + lista(names) + ". Esta corrida no trajo un valor nuevo.");
+  });
 }
 
 function addNote(host, text) {
@@ -1138,13 +1198,14 @@ function setDelta(el, value, formatter) {
   el.classList.add(value > 0 ? "delta-pos" : value < 0 ? "delta-neg" : "delta-zero");
 }
 
-function setAvance(el, value) {
+function setAvance(el, value, anterior) {
   ["text-b50", "text-b75", "text-b90", "text-b99", "text-b100"].forEach((name) => el.classList.remove(name));
   if (value == null || !Number.isFinite(value)) {
     el.textContent = "—";
     return;
   }
-  el.textContent = pctFmt.format(value);
+  el.replaceChildren(document.createTextNode(pctFmt.format(value)));
+  if (anterior) el.append(anteriorMark());
   el.classList.add("text-b" + bandKey(value));
 }
 
@@ -1182,9 +1243,13 @@ function mark(symbol) {
   return sup;
 }
 
-function moneyCell(value) {
+function moneyCell(value, anterior) {
   if (value == null) return dash();
-  return textEl(moneyFmt.format(value));
+  const node = textEl(moneyFmt.format(value));
+  if (!anterior) return node;
+  const wrap = document.createElement("span");
+  wrap.append(node, anteriorMark());
+  return wrap;
 }
 
 function countCell(value) {
@@ -1216,7 +1281,7 @@ function growthNode(value) {
   return span;
 }
 
-function avanceNode(value) {
+function avanceNode(value, anterior) {
   if (value == null || !Number.isFinite(value)) return dash();
   const wrap = document.createElement("div");
   wrap.className = "avance";
@@ -1230,6 +1295,7 @@ function avanceNode(value) {
   const label = document.createElement("span");
   label.className = "text-b" + bandKey(value);
   label.textContent = pctFmt.format(value);
+  if (anterior) label.append(anteriorMark());
   wrap.append(track, label);
   return wrap;
 }

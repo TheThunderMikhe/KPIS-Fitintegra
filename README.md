@@ -12,6 +12,7 @@ La actualización del día solo toca [`data/kpis.json`](data/kpis.json). El nave
 - Selector de unidad. **Global** es el total de la red. Cada pastilla sale del nombre en `unidades`; no está escrita en el HTML. Al elegir una unidad, las tarjetas, la gráfica y la tabla quedan en esa unidad. La elección vive en el hash (`#coapa`, `#la-salle`, `#casa-blanca`) y se puede compartir. Vacío o `#global` es la red. Un hash que no coincide deja la vista global.
 - Tema claro u oscuro. El botón de sol o luna está en el encabezado. Sin elección guardada, sigue `prefers-color-scheme`. La elección se guarda en `localStorage` (`fit-integra-tema`) y se aplica antes de pintar, para no parpadear.
 - Columnas vacías en las 11 unidades, en «Pendiente de captura», no como ceros.
+- Un asterisco marca **dato anterior**: la corrida no trajo ese campo y se conservó el último número, en vez de publicarlo como si fuera de hoy.
 - Estatus tal como se capturó. No se recalcula con el avance.
 
 ## Fórmulas que sí se calculan
@@ -41,9 +42,15 @@ No se calculan altas, bajas, tasas, ticket, costo por conversación ni los porce
 }
 ```
 
-`ultima_actualizacion` acepta fecha (`2026-10-22`) o fecha con hora del centro de México (`2026-10-22T07:30:00-06:00`). México no cambia de horario: el desfase es `-06:00`.
+`ultima_actualizacion` acepta fecha (`2026-10-22`) o fecha con hora del centro de México (`2026-10-21T22:00:00-06:00`). México no cambia de horario: el desfase es `-06:00`.
 
 Cada unidad lleva insumos. `null` es «sin captura». `0` es un cero real (Tepetatal y La Mancha tienen ingresos 2024 en 0, no vacío).
+
+`dato_anterior` es opcional. Es una lista de claves cuyo número **no** vino en la corrida y se dejó el valor previo. Hoy solo se usa en `ingresos_2026` y `venta`. La página pone un asterisco y el texto «Dato anterior». No lo uses en un campo `null`: eso ya se muestra como pendiente de captura. Si la corrida trajo el dato, omite la clave (o el arreglo entero).
+
+```json
+"dato_anterior": ["ingresos_2026"]
+```
 
 | JSON | Columna en Notion |
 | --- | --- |
@@ -80,13 +87,14 @@ El orden del arreglo es el de la tabla de Notion y sirve de desempate al ordenar
 
 ## Actualización dos veces al día
 
-Alrededor de las **7:30 a. m.** y las **8:30 p. m.**, hora del centro de México, se actualizan ingresos 2026 y venta.
+La fuente de ingresos 2026 y venta es el envío de KPI Guy, no Notion. Alrededor de las **7:30 a. m.** y las **8:30 p. m.**, hora del centro de México, se actualizan esos dos campos. Las metas no se tocan salvo que el envío las cambie.
 
-1. Edita `ingresos_2026` y `venta` de cada unidad.
-2. Si una unidad no trae venta en ese corte, deja `venta` en `null`. No escribas `0` salvo que la venta real sea cero.
-3. Cambia `ultima_actualizacion`, por ejemplo `2026-10-22T07:30:00-06:00` o `2026-10-22T20:30:00-06:00`.
-4. Si cambia el corte o el mes, ajusta `periodo` y `corte`.
-5. Haz commit y push a `main`. No hay build. Recarga el sitio; la página pide el JSON sin caché.
+1. Edita `ingresos_2026` y `venta` de las unidades que sí vengan en la corrida.
+2. Si un campo con número no viene, conserva el valor anterior y agrégalo a `dato_anterior`. No escribas `0`.
+3. Si la venta sigue vacía, déjala en `null` y no la pongas en `dato_anterior`.
+4. Cambia `ultima_actualizacion`, por ejemplo `2026-10-21T22:00:00-06:00`.
+5. Si cambia el rango, ajusta `periodo` y `corte` (por ejemplo `01/10/2026-21/10/2026`).
+6. Haz commit y push a `main`. No hay build. Recarga el sitio; la página pide el JSON sin caché.
 
 ## Verlo en local
 

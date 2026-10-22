@@ -773,6 +773,10 @@ tfoot td {
   font-family: Inter, system-ui, sans-serif;
 }
 
+.marca[title] {
+  cursor: help;
+}
+
 .cell-note {
   font-family: Inter, system-ui, sans-serif;
   font-size: 0.7rem;
