@@ -2,8 +2,8 @@
   "schema_version": 1,
   "periodo": "01/10/2026-23/10/2026",
   "corte": "Del 1 al 23 de octubre de 2026",
-  "ultima_actualizacion": "2026-10-23T11:30:00-06:00",
-  "fuente": "KPI Guy · 23 de octubre de 2026, 11:30",
+  "ultima_actualizacion": "2026-10-23T12:00:00-06:00",
+  "fuente": "KPI Guy · 23 de octubre de 2026, 12:00",
   "moneda": "MXN",
   "bloques": [
     {
@@ -27,7 +27,7 @@
       "unidad": "Izcalli",
       "bloque": "fit",
       "meta": 1510306,
-      "ingresos_2026": 1240792.9,
+      "ingresos_2026": 1244345,
       "ingresos_2025": 1341420,
       "ingresos_2024": 1339348,
       "usuarios_activos_mes_anterior": 1420,
@@ -41,23 +41,20 @@
       "recurente": null,
       "recuperado": null,
       "pago_adelantado": null,
-      "venta": 119259.82,
+      "venta": 122348.92,
       "retail": null,
       "eventos": null,
       "agregadores": null,
       "cargos_domiciliados": null,
       "gastos_sin_inversion": 2390025.42,
       "numero": null,
-      "dato_anterior": [
-        "ingresos_2026"
-      ],
       "status": "Hasta 50%"
     },
     {
       "unidad": "Coapa",
       "bloque": "fit",
       "meta": 4692072,
-      "ingresos_2026": 3734551.5,
+      "ingresos_2026": 3818736.5,
       "ingresos_2025": 4304653,
       "ingresos_2024": 4049739,
       "usuarios_activos_mes_anterior": 3778,
@@ -78,9 +75,6 @@
       "cargos_domiciliados": null,
       "gastos_sin_inversion": 2467382,
       "numero": null,
-      "dato_anterior": [
-        "ingresos_2026"
-      ],
       "status": "Hasta 75%"
     },
     {
@@ -141,7 +135,7 @@
       "unidad": "Azcapotzalco",
       "bloque": "fit",
       "meta": 2516249,
-      "ingresos_2026": 1686546.95,
+      "ingresos_2026": 1691777.95,
       "ingresos_2025": 2233958,
       "ingresos_2024": 1974629,
       "usuarios_activos_mes_anterior": 2392,
@@ -155,23 +149,20 @@
       "recurente": null,
       "recuperado": null,
       "pago_adelantado": null,
-      "venta": 230981.11,
+      "venta": 232642.11,
       "retail": null,
       "eventos": null,
       "agregadores": null,
       "cargos_domiciliados": null,
       "gastos_sin_inversion": 2929816,
       "numero": null,
-      "dato_anterior": [
-        "ingresos_2026"
-      ],
       "status": "Hasta 50%"
     },
     {
       "unidad": "Coacalco",
       "bloque": "fit",
       "meta": 1373207,
-      "ingresos_2026": 1039402.35,
+      "ingresos_2026": 1092379.35,
       "ingresos_2025": 1095664,
       "ingresos_2024": 916883,
       "usuarios_activos_mes_anterior": 1774,
@@ -185,23 +176,20 @@
       "recurente": null,
       "recuperado": null,
       "pago_adelantado": null,
-      "venta": 63110.88,
+      "venta": 65460.88,
       "retail": null,
       "eventos": null,
       "agregadores": null,
       "cargos_domiciliados": null,
       "gastos_sin_inversion": 2175183,
       "numero": null,
-      "dato_anterior": [
-        "ingresos_2026"
-      ],
       "status": "Hasta 50%"
     },
     {
       "unidad": "COM",
       "bloque": "fit",
       "meta": 1647310,
-      "ingresos_2026": 1178913.17,
+      "ingresos_2026": 1182244.17,
       "ingresos_2025": 1254066,
       "ingresos_2024": 1165482,
       "usuarios_activos_mes_anterior": 946,
@@ -222,16 +210,13 @@
       "cargos_domiciliados": null,
       "gastos_sin_inversion": 2887193,
       "numero": null,
-      "dato_anterior": [
-        "ingresos_2026"
-      ],
       "status": "Hasta 50%"
     },
     {
       "unidad": "Tlalli",
       "bloque": "fit",
       "meta": 1990638,
-      "ingresos_2026": 1003819.97,
+      "ingresos_2026": 1009641.97,
       "ingresos_2025": 1731664,
       "ingresos_2024": 1509540,
       "usuarios_activos_mes_anterior": 2475,
@@ -245,16 +230,13 @@
       "recurente": null,
       "recuperado": null,
       "pago_adelantado": null,
-      "venta": 178108.77,
+      "venta": 183157.77,
       "retail": null,
       "eventos": null,
       "agregadores": null,
       "cargos_domiciliados": null,
       "gastos_sin_inversion": 3589773,
       "numero": null,
-      "dato_anterior": [
-        "ingresos_2026"
-      ],
       "status": "Hasta 50%"
     },
     {
@@ -305,7 +287,7 @@
       "recurente": null,
       "recuperado": null,
       "pago_adelantado": null,
-      "venta": 129446,
+      "venta": 129666,
       "retail": null,
       "eventos": null,
       "agregadores": null,
@@ -378,7 +360,7 @@
       "unidad": "San Bartolomé",
       "bloque": "fit-go",
       "meta": 859635,
-      "ingresos_2026": 486947.11,
+      "ingresos_2026": 486987.11,
       "ingresos_2025": null,
       "ingresos_2024": null,
       "usuarios_activos_mes_anterior": null,
@@ -405,7 +387,7 @@
       "unidad": "Tuxtla",
       "bloque": "fit-go",
       "meta": 2309269,
-      "ingresos_2026": 1288461.99,
+      "ingresos_2026": 1300522.23,
       "ingresos_2025": null,
       "ingresos_2024": null,
       "usuarios_activos_mes_anterior": null,
