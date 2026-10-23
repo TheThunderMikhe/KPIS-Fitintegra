@@ -15,7 +15,6 @@ La actualización del día solo toca [`data/kpis.json`](data/kpis.json). El nave
 - Tema claro u oscuro. El botón de sol o luna está en el encabezado. Sin elección guardada, sigue `prefers-color-scheme`. La elección se guarda en `localStorage` (`fit-integra-tema`) y se aplica antes de pintar, para no parpadear.
 - Columnas vacías en las 11 unidades, en «Pendiente de captura», no como ceros.
 - Un asterisco marca **dato anterior**: la corrida no trajo ese campo y se conservó el último número, en vez de publicarlo como si fuera de hoy.
-- Estatus tal como se capturó. No se recalcula con el avance.
 
 ## Fórmulas que sí se calculan
 
@@ -29,7 +28,7 @@ Están verificadas contra Notion. No van en el JSON.
 | % Venta | Venta ÷ Ingresos 2026, solo en bloques con `aplica_venta: true`. Si venta es `null`, cuenta como 0. Si `aplica_venta` es `false`, no entra y se muestra «No aplica». |
 | Avance de un bloque | Suma de ingresos ÷ suma de metas, solo unidades que traen los dos. Una unidad sin meta, o con meta pero sin ingresos, no mueve el porcentaje. |
 
-En el corte de octubre no se calculan altas, bajas, tasas, ticket, costo por conversación ni los porcentajes de canal a partir de `kpis.json`: si el campo no existe, la sección correspondiente dice «Sin dato». El estatus es manual. Gastos sin inversión no se muestra.
+En el corte de octubre no se calculan altas, bajas, tasas, ticket, costo por conversación ni los porcentajes de canal a partir de `kpis.json`: si el campo no existe, la sección correspondiente dice «Sin dato». Gastos sin inversión no se muestra.
 
 En un periodo con meses de enero a septiembre, las cifras de Fit salen de `data/historico.json` y se agregan así:
 
@@ -103,11 +102,8 @@ Cada unidad lleva insumos. `null` es «sin captura». `0` es un cero real (Tepet
 | `agregadores` | Agregadores |
 | `cargos_domiciliados` | Cargos Domiciliados |
 | `numero` | Número |
-| `status` | Status |
 
-Valores de `status` para el color de la etiqueta: `Hasta 50%`, `Hasta 75%`, `Hasta 90%`, `Hasta 99%`, `100%+`. Otro texto se muestra igual, sin color de escala.
-
-No pongas en el archivo avance, crecimientos, % de venta ni el resto de fórmulas. Si un insumo que hoy está en `null` se llena en todas o en alguna unidad, la columna aparece sola en la tabla. `gastos_sin_inversion` se conserva porque así llega de KPI Guy, y la página no lo muestra.
+No pongas en el archivo avance, crecimientos, % de venta ni el resto de fórmulas. Si un insumo que hoy está en `null` se llena en todas o en alguna unidad, la columna aparece sola en la tabla. `gastos_sin_inversion` y `status` se conservan porque así llegan de KPI Guy, y la página no los muestra. El color del avance sale del porcentaje calculado, por bandas.
 
 ## Formato de `data/historico.json`
 

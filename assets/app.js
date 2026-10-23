@@ -6,7 +6,7 @@
    crec. vs 2024 = ingresos_2026 / ingresos_2024 - 1, o -1 si la base es 0;
    % venta = venta / ingresos_2026, y la venta vacía cuenta como 0.
    El histórico de enero a septiembre solo cubre Fit.
-   El estatus no se recalcula. Gastos sin inversión no se muestra. */
+   Gastos sin inversión no se muestra. */
 
 const INPUT_FIELDS = [
   { key: "meta", label: "Meta", kind: "money", group: "resultado" },
@@ -14,7 +14,6 @@ const INPUT_FIELDS = [
   { key: "ingresos_2025", label: "Ingresos 2025", kind: "money", group: "resultado" },
   { key: "ingresos_2024", label: "Ingresos 2024", kind: "money", group: "resultado" },
   { key: "venta", label: "Venta", kind: "money", group: "resultado" },
-  { key: "status", label: "Estatus", kind: "status", group: "resultado" },
   { key: "usuarios_activos_mes_anterior", label: "Usuarios activos mes anterior", kind: "count", group: "usuarios" },
   { key: "usuarios_activos", label: "Usuarios activos", kind: "count", group: "usuarios" },
   { key: "altas_digitales", label: "Altas digitales", kind: "count", group: "usuarios" },
@@ -40,22 +39,6 @@ const GROUPS = [
   { id: "canales", label: "Composición del ingreso" },
   { id: "otro", label: "Otros" },
 ];
-
-const STATUS_CLASS = {
-  "Hasta 50%": "badge-50",
-  "Hasta 75%": "badge-75",
-  "Hasta 90%": "badge-90",
-  "Hasta 99%": "badge-99",
-  "100%+": "badge-100",
-};
-
-const STATUS_RANK = {
-  "Hasta 50%": 1,
-  "Hasta 75%": 2,
-  "Hasta 90%": 3,
-  "Hasta 99%": 4,
-  "100%+": 5,
-};
 
 const moneyFmt = new Intl.NumberFormat("es-MX", {
   style: "currency",
@@ -535,10 +518,10 @@ function paintScope(block, unit, pool) {
         : "Suma de " + lista(currentBlocks.map((item) => item.nombre)) + ". " + crecimientoLead(pool);
     document.getElementById("titulo-tabla").textContent = unit ? unit.unidad : block ? block.nombre : "Detalle por unidad";
     document.getElementById("lead-tabla").textContent = unit
-      ? "Cifras de " + unit.unidad + ". El estatus es captura manual y puede no coincidir con el avance."
+      ? "Cifras de " + unit.unidad + "."
       : block
-        ? "Unidades de " + block.nombre + ". Selecciona un encabezado para ordenar. El estatus es captura manual y puede no coincidir con el avance."
-        : "Selecciona un encabezado para ordenar. Los subtotales por bloque están al pie. El estatus es captura manual y puede no coincidir con el avance.";
+        ? "Unidades de " + block.nombre + ". Selecciona un encabezado para ordenar."
+        : "Selecciona un encabezado para ordenar. Los subtotales por bloque están al pie.";
     const badge = document.getElementById("periodo-badge").textContent;
     const sinAvance = pool.some((row) => row.avance == null);
     document.getElementById("titulo-grafica").textContent = unit
@@ -553,16 +536,6 @@ function paintScope(block, unit, pool) {
   document.getElementById("lead-otras").textContent = unit
     ? "Solo lo que " + unit.unidad + " trae capturado. No se calcula utilidad."
     : "Solo se suman las unidades que traen dato. No se calcula utilidad.";
-
-  const status = document.getElementById("kpi-status");
-  status.replaceChildren();
-  if (!unit) {
-    status.hidden = true;
-    return;
-  }
-  status.hidden = false;
-  if (unit.status) status.append(statusBadge(unit.status));
-  else status.textContent = "Estatus pendiente de captura";
 }
 
 function storedTheme() {
@@ -612,12 +585,7 @@ function derive(raw) {
   if (!unidad) return null;
   const row = { unidad };
   INPUT_FIELDS.forEach((field) => {
-    if (field.kind === "status") {
-      const value = raw[field.key];
-      row[field.key] = value == null || String(value).trim() === "" ? null : String(value).trim();
-    } else {
-      row[field.key] = num(raw[field.key]);
-    }
+    row[field.key] = num(raw[field.key]);
   });
   const ingresos = row.ingresos_2026;
   const meta = row.meta;
@@ -949,7 +917,6 @@ function renderChart(rows, unit) {
       meta: row.period ? row.period.meta : null,
       aplicaVenta: false,
       venta: null,
-      status: null,
       anterior: new Set(),
     }))
     : rows;
@@ -1036,7 +1003,6 @@ function renderChart(rows, unit) {
                 else if (row.venta != null) {
                   lineas.push("Venta: " + moneyFmt.format(row.venta) + (esAnterior(row, "venta") ? " (dato anterior)" : ""));
                 }
-                lineas.push("Estatus (manual): " + (row.status || "Sin captura"));
                 return lineas;
               },
             },
@@ -1171,7 +1137,7 @@ function buildColumns(rows) {
   const base = baseColumns().filter((col) => col.visible(rows));
   const used = new Set(baseColumns().map((col) => col.key).filter(Boolean));
   INPUT_FIELDS.forEach((field) => {
-    if (used.has(field.key) || field.kind === "status") return;
+    if (used.has(field.key)) return;
     if (!rows.some((row) => row[field.key] != null)) return;
     base.push(columnFromField(field));
   });
@@ -1191,19 +1157,6 @@ function baseColumns() {
       visible: () => true,
       render: (row) => textEl(row.unidad, "unidad-nombre"),
       total: (rows) => textEl("Red (" + rows.length + ")", "unidad-nombre"),
-    },
-    {
-      id: "status",
-      key: "status",
-      label: "Estatus",
-      kind: "number",
-      prefer: "asc",
-      align: "left",
-      hint: "Captura manual. No se calcula con el avance.",
-      value: (row) => (row.status == null ? null : STATUS_RANK[row.status] ?? row.status),
-      visible: (rows) => rows.some((row) => row.status != null),
-      render: (row) => statusBadge(row.status),
-      total: () => noteEl("Manual"),
     },
     moneyColumn("meta", "Meta", "Meta del periodo."),
     moneyColumn("ingresos_2026", "Ingresos 2026", "Ingresos capturados en 2026, mes a la fecha."),
@@ -1529,9 +1482,6 @@ function compareRows(a, b) {
 }
 
 function dirLabel(col) {
-  if (col.id === "status") {
-    return sortState.dir === "asc" ? "de Hasta 50% hacia 100%+" : "de 100%+ hacia Hasta 50%";
-  }
   if (col.kind === "text") {
     return sortState.dir === "asc" ? "de la A a la Z" : "de la Z a la A";
   }
@@ -1722,14 +1672,6 @@ function avanceNode(value, anterior) {
   if (anterior) label.append(anteriorMark());
   wrap.append(track, label);
   return wrap;
-}
-
-function statusBadge(status) {
-  if (status == null) return dash();
-  const span = document.createElement("span");
-  span.className = "badge " + (STATUS_CLASS[status] || "badge-unk");
-  span.textContent = status;
-  return span;
 }
 
 function lista(nombres) {

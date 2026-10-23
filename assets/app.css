@@ -59,24 +59,6 @@ html {
   --tooltip-bg: #0f172a;
   --tooltip-title: #ffffff;
   --tooltip-body: #f8fafc;
-  --badge-50-bg: #fee2e2;
-  --badge-50-fg: #991b1b;
-  --badge-50-bd: #fca5a5;
-  --badge-75-bg: #ffedd5;
-  --badge-75-fg: #9a3412;
-  --badge-75-bd: #fdba74;
-  --badge-90-bg: #f59e0b;
-  --badge-90-fg: #1c1917;
-  --badge-90-bd: #b45309;
-  --badge-99-bg: #d1fae5;
-  --badge-99-fg: #065f46;
-  --badge-99-bd: #6ee7b7;
-  --badge-100-bg: #dbeafe;
-  --badge-100-fg: #1e3a8a;
-  --badge-100-bd: #93c5fd;
-  --badge-unk-bg: #f1f5f9;
-  --badge-unk-fg: #0f172a;
-  --badge-unk-bd: #cbd5e1;
 }
 
 html[data-theme="dark"] {
@@ -134,24 +116,6 @@ html[data-theme="dark"] {
   --tooltip-bg: #f8fafc;
   --tooltip-title: #0f172a;
   --tooltip-body: #1e293b;
-  --badge-50-bg: #7f1d1d;
-  --badge-50-fg: #fecaca;
-  --badge-50-bd: #fca5a5;
-  --badge-75-bg: #7c2d12;
-  --badge-75-fg: #ffedd5;
-  --badge-75-bd: #fdba74;
-  --badge-90-bg: #f59e0b;
-  --badge-90-fg: #1c1917;
-  --badge-90-bd: #b45309;
-  --badge-99-bg: #064e3b;
-  --badge-99-fg: #d1fae5;
-  --badge-99-bd: #6ee7b7;
-  --badge-100-bg: #1e3a8a;
-  --badge-100-fg: #dbeafe;
-  --badge-100-bd: #93c5fd;
-  --badge-unk-bg: #1e293b;
-  --badge-unk-fg: #f8fafc;
-  --badge-unk-bd: #475569;
 }
 
 *,
@@ -471,10 +435,6 @@ html[data-theme="dark"] .icon-btn .icon-sun {
   flex-wrap: wrap;
   align-items: center;
   gap: 0.45rem 0.7rem;
-}
-
-.kpi-status {
-  margin: 0;
 }
 
 .section-title {
@@ -813,26 +773,6 @@ tfoot tr.is-subtotal td {
   overflow: hidden;
   flex: none;
 }
-
-.badge {
-  display: inline-flex;
-  align-items: center;
-  border-radius: 999px;
-  padding: 0.15rem 0.5rem;
-  font-family: Inter, system-ui, sans-serif;
-  font-size: 0.75rem;
-  font-weight: 700;
-  line-height: 1.35;
-  white-space: nowrap;
-  border: 1px solid transparent;
-}
-
-.badge-50 { background: var(--badge-50-bg); color: var(--badge-50-fg); border-color: var(--badge-50-bd); }
-.badge-75 { background: var(--badge-75-bg); color: var(--badge-75-fg); border-color: var(--badge-75-bd); }
-.badge-90 { background: var(--badge-90-bg); color: var(--badge-90-fg); border-color: var(--badge-90-bd); }
-.badge-99 { background: var(--badge-99-bg); color: var(--badge-99-fg); border-color: var(--badge-99-bd); }
-.badge-100 { background: var(--badge-100-bg); color: var(--badge-100-fg); border-color: var(--badge-100-bd); }
-.badge-unk { background: var(--badge-unk-bg); color: var(--badge-unk-fg); border-color: var(--badge-unk-bd); }
 
 .pendiente {
   color: var(--text-muted);
