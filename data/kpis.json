@@ -405,7 +405,7 @@
       "unidad": "Tuxtla",
       "bloque": "fit-go",
       "meta": 2309269,
-      "ingresos_2026": 1249899,
+      "ingresos_2026": 1288461.99,
       "ingresos_2025": null,
       "ingresos_2024": null,
       "usuarios_activos_mes_anterior": null,
@@ -426,16 +426,13 @@
       "cargos_domiciliados": null,
       "gastos_sin_inversion": null,
       "numero": null,
-      "dato_anterior": [
-        "ingresos_2026"
-      ],
       "status": null
     },
     {
       "unidad": "Satélite",
       "bloque": "fit-go",
       "meta": 1570871,
-      "ingresos_2026": 884786,
+      "ingresos_2026": 887026.57,
       "ingresos_2025": null,
       "ingresos_2024": null,
       "usuarios_activos_mes_anterior": null,
@@ -456,9 +453,6 @@
       "cargos_domiciliados": null,
       "gastos_sin_inversion": null,
       "numero": null,
-      "dato_anterior": [
-        "ingresos_2026"
-      ],
       "status": null
     },
     {
