@@ -6,14 +6,15 @@ La actualización del día solo toca [`data/kpis.json`](data/kpis.json). El nave
 
 ## Qué muestra
 
-- Totales de la red: ingresos 2026 contra la meta, avance, crecimiento vs 2025 y vs 2024, y venta.
+- Totales de la red en octubre: ingresos 2026 contra la meta, avance, crecimiento vs 2025 y vs 2024, y venta.
+- Selector de meses (enero a octubre de 2026), con atajos T1, T2, T3 y Año a la fecha. El histórico de enero a septiembre solo cubre las 11 unidades Fit. En Fit&Go y Alcaldías el selector se oculta y queda octubre. En Todo, si el periodo incluye un mes anterior a octubre, la vista muestra solo Fit y lo aclara. La elección vive en el hash junto con el bloque y la unidad (`#ene+feb+mar/fit/coapa`). Sin meses, o solo octubre, el hash sigue siendo el de hoy (`#fit/coapa`, `#coapa`, vacío).
+- Secciones Financiero, Usuarios y Redes. En un periodo que no es solo octubre, ingreso, meta y avance salen de la agregación. Domiciliado es un monto y se suma. Usuarios activos es el único indicador que toma el último mes con dato.
 - Gráfica de avance de meta por unidad.
 - Tabla por unidad, ordenable. La primera columna se queda fija al desplazar en horizontal.
 - Selector de bloque y, debajo, de unidad. Los nombres salen de `bloques` y `unidades`; no están escritos en el HTML. **Todo** suma todos los bloques. Dentro de un bloque, **Global** es la suma de ese bloque. La elección vive en el hash (`#fit/coapa`, `#fit-go`, `#alcaldias`) y se puede compartir. Vacío o `#todo` es la vista de todos. Un hash de una sola unidad, como `#coapa`, sigue abriendo esa unidad. Un hash que no coincide deja la vista Todo.
 - Tema claro u oscuro. El botón de sol o luna está en el encabezado. Sin elección guardada, sigue `prefers-color-scheme`. La elección se guarda en `localStorage` (`fit-integra-tema`) y se aplica antes de pintar, para no parpadear.
 - Columnas vacías en las 11 unidades, en «Pendiente de captura», no como ceros.
 - Un asterisco marca **dato anterior**: la corrida no trajo ese campo y se conservó el último número, en vez de publicarlo como si fuera de hoy.
-- Estatus tal como se capturó. No se recalcula con el avance.
 
 ## Fórmulas que sí se calculan
 
@@ -27,7 +28,20 @@ Están verificadas contra Notion. No van en el JSON.
 | % Venta | Venta ÷ Ingresos 2026, solo en bloques con `aplica_venta: true`. Si venta es `null`, cuenta como 0. Si `aplica_venta` es `false`, no entra y se muestra «No aplica». |
 | Avance de un bloque | Suma de ingresos ÷ suma de metas, solo unidades que traen los dos. Una unidad sin meta, o con meta pero sin ingresos, no mueve el porcentaje. |
 
-No se calculan altas, bajas, tasas, ticket, costo por conversación ni los porcentajes de canal. Esas fórmulas no quedaron verificadas. El estatus es manual.
+En el corte de octubre no se calculan altas, bajas, tasas, ticket, costo por conversación ni los porcentajes de canal a partir de `kpis.json`: si el campo no existe, la sección correspondiente dice «Sin dato». Gastos sin inversión no se muestra.
+
+En un periodo con meses de enero a septiembre, las cifras de Fit salen de `data/historico.json` y se agregan así:
+
+| Indicador | Cómo se junta |
+| --- | --- |
+| Ingreso, meta, altas, bajas, altas netas, domiciliado, inversión, alcance, conversaciones | Suma. Si todos vienen vacíos, queda sin dato, no en cero. Domiciliado es un monto en pesos. Un cero capturado se muestra. |
+| Avance | Ingreso ÷ meta, solo en los meses y unidades que traen ambos. |
+| Usuarios activos | Entre meses, el último mes elegido que trae dato. Entre unidades, la suma de esos valores. |
+| Tasa de retención, tasa de cancelación, ticket promedio | Promedio ponderado por usuarios activos. Sin pesos, sin dato. No se usa un promedio simple. |
+| Costo x conversación | Inversión ÷ conversaciones, con las sumas. No es el promedio de los costos. |
+| % Conversión | Promedio ponderado por conversaciones. `null` se muestra «Sin dato». No se usa `notas.conversion_estimada`. |
+
+Los porcentajes del histórico vienen en puntos: `85.2` significa 85.2%.
 
 ## Formato de `data/kpis.json`
 
@@ -88,11 +102,41 @@ Cada unidad lleva insumos. `null` es «sin captura». `0` es un cero real (Tepet
 | `agregadores` | Agregadores |
 | `cargos_domiciliados` | Cargos Domiciliados |
 | `numero` | Número |
-| `status` | Status |
 
-Valores de `status` para el color de la etiqueta: `Hasta 50%`, `Hasta 75%`, `Hasta 90%`, `Hasta 99%`, `100%+`. Otro texto se muestra igual, sin color de escala.
+No pongas en el archivo avance, crecimientos, % de venta ni el resto de fórmulas. Si un insumo que hoy está en `null` se llena en todas o en alguna unidad, la columna aparece sola en la tabla. `gastos_sin_inversion` y `status` se conservan porque así llegan de KPI Guy, y la página no los muestra. El color del avance sale del porcentaje calculado, por bandas.
 
-No pongas en el archivo avance, crecimientos, % de venta ni el resto de fórmulas. Si un insumo que hoy está en `null` se llena en todas o en alguna unidad, la columna aparece sola en la tabla. `gastos_sin_inversion` es la excepción: se queda en el JSON y, si hay captura, la suma sale en «Otras cifras», no como columna.
+## Formato de `data/historico.json`
+
+Enero a septiembre de 2026, solo unidades Fit. Octubre no va aquí: sigue saliendo de `kpis.json`. La clave de cada unidad es el mismo `unidad` que en `kpis.json` (por ejemplo `Casa Blanca`, no un alias). `null` es «Sin dato». `0` es un cero capturado. Los porcentajes van en puntos (`85.2` = 85.2%). `fuentes` y `notas` se guardan para trazabilidad y la página no las pinta. En particular no usa `notas.conversion_estimada`.
+
+```json
+{
+  "fuentes": {},
+  "notas": {},
+  "meses": {
+    "2026-01": {
+      "Coapa": {
+        "ingreso": null,
+        "meta": null,
+        "usuarios_activos": null,
+        "altas": null,
+        "bajas": null,
+        "altas_netas": null,
+        "domiciliado": null,
+        "tasa_retencion": null,
+        "tasa_cancelacion": null,
+        "ticket_promedio": null,
+        "inversion": null,
+        "alcance": null,
+        "conversaciones": null,
+        "conversion": null
+      }
+    }
+  }
+}
+```
+
+`costo_conversacion`, si viniera en el archivo, no se lee: el costo se recalcula.
 
 El orden del arreglo es el de la tabla de Notion y sirve de desempate al ordenar.
 
@@ -106,6 +150,8 @@ La fuente de ingresos 2026 y venta es el envío de KPI Guy, no Notion. Alrededor
 4. Cambia `ultima_actualizacion`, por ejemplo `2026-10-21T22:00:00-06:00`.
 5. Si cambia el rango, ajusta `periodo` y `corte` (por ejemplo `01/10/2026-21/10/2026`).
 6. Haz commit y push a `main`. No hay build. Recarga el sitio; la página pide el JSON sin caché.
+
+El histórico de enero a septiembre no entra en esa corrida. Si cambia, se edita `data/historico.json`.
 
 ## Verlo en local
 

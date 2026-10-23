@@ -64,22 +64,29 @@
     <div class="wrap stack">
       <div id="error-banner" class="error-banner" role="alert" hidden></div>
 
-      <nav class="unit-bar no-print" aria-label="Elegir bloque y unidad">
+      <nav class="unit-bar no-print" aria-label="Elegir periodo, bloque y unidad">
+        <div id="month-bar" class="month-bar">
+          <div class="month-row">
+            <div id="month-switch" class="unit-switch month-switch" role="group" aria-label="Meses"></div>
+            <div id="month-shortcuts" class="unit-switch shortcut-switch" role="group" aria-label="Atajos de periodo"></div>
+          </div>
+          <p id="month-note" class="month-note" hidden></p>
+        </div>
         <div id="block-switch" class="unit-switch block-switch" role="group" aria-label="Bloque"></div>
         <div id="unit-switch" class="unit-switch" role="group" aria-label="Unidad"></div>
       </nav>
 
       <section aria-labelledby="titulo-red">
         <div class="section-head">
+          <p id="kicker-red" class="section-kicker">Financiero</p>
           <div class="title-line">
             <h2 id="titulo-red" class="section-title">Totales de la red</h2>
-            <p id="kpi-status" class="kpi-status" hidden></p>
           </div>
           <p id="lead-red" class="section-lead">Totales de la red. El crecimiento compara la suma de 2026 con la suma del año base, no el promedio de cada unidad.</p>
         </div>
-        <div class="kpi-grid">
+        <div id="kpi-grid" class="kpi-grid">
           <article class="card">
-            <h3 class="card-label">Ingresos 2026</h3>
+            <h3 id="label-ingresos" class="card-label">Ingresos 2026</h3>
             <p id="kpi-ingresos" class="kpi-value">—</p>
             <p id="kpi-meta" class="kpi-sub">Meta —</p>
             <p id="kpi-avance" class="kpi-accent">—</p>
@@ -92,20 +99,20 @@
             <p id="nota-anterior-ingresos" class="kpi-note" hidden></p>
           </article>
 
-          <article class="card">
+          <article id="card-vs25" class="card">
             <h3 class="card-label">Crecimiento vs 2025</h3>
             <p id="kpi-vs25" class="kpi-value">—</p>
             <p id="kpi-vs25-base" class="kpi-sub"></p>
           </article>
 
-          <article class="card">
+          <article id="card-vs24" class="card">
             <h3 class="card-label">Crecimiento vs 2024</h3>
             <p id="kpi-vs24" class="kpi-value">—</p>
             <p id="kpi-vs24-base" class="kpi-sub"></p>
             <p id="nota-2024" class="kpi-note" hidden></p>
           </article>
 
-          <article class="card">
+          <article id="card-venta" class="card">
             <h3 class="card-label">Venta</h3>
             <p id="kpi-venta" class="kpi-value">—</p>
             <p id="kpi-venta-pct" class="kpi-sub"></p>
@@ -113,6 +120,7 @@
             <p id="nota-anterior-venta" class="kpi-note" hidden></p>
           </article>
         </div>
+        <div id="grid-financiero" class="kpi-grid cols-3" hidden></div>
       </section>
 
       <section id="seccion-otras" aria-labelledby="titulo-otras">
@@ -121,17 +129,28 @@
           <p id="lead-otras" class="section-lead">Solo se suman las unidades que traen dato. No se calcula utilidad.</p>
         </div>
         <div class="kpi-grid-2">
-          <article id="card-gastos" class="card" hidden>
-            <h3 class="card-label">Gastos sin inversión</h3>
-            <p id="kpi-gastos" class="kpi-value">—</p>
-            <p id="nota-gastos" class="kpi-note"></p>
-          </article>
           <article id="card-usuarios" class="card" hidden>
             <h3 class="card-label">Usuarios activos del mes anterior</h3>
             <p id="kpi-usuarios" class="kpi-value">—</p>
             <p id="nota-usuarios" class="kpi-note"></p>
           </article>
         </div>
+      </section>
+
+      <section id="seccion-usuarios" aria-labelledby="titulo-usuarios">
+        <div class="section-head">
+          <h2 id="titulo-usuarios" class="section-title">Usuarios</h2>
+          <p id="lead-usuarios" class="section-lead">Usuarios activos toma el último mes con dato y se suma entre unidades. Domiciliado es un monto y se suma. Tasas y ticket son promedio ponderado por usuarios activos.</p>
+        </div>
+        <div id="grid-usuarios" class="kpi-grid"></div>
+      </section>
+
+      <section id="seccion-redes" aria-labelledby="titulo-redes">
+        <div class="section-head">
+          <h2 id="titulo-redes" class="section-title">Redes</h2>
+          <p id="lead-redes" class="section-lead">Inversión, alcance y conversaciones se suman. El costo sale de esas sumas. La conversión es promedio ponderado por conversaciones.</p>
+        </div>
+        <div id="grid-redes" class="kpi-grid"></div>
       </section>
 
       <section class="card" aria-labelledby="titulo-grafica">
@@ -151,14 +170,14 @@
           <li><span class="swatch swatch-99" aria-hidden="true"></span> Del 90% a menos del 100%</li>
           <li><span class="swatch swatch-100" aria-hidden="true"></span> 100% o más</li>
         </ul>
-        <p class="nota">La línea punteada marca el 100% de la meta. El color sigue el avance calculado y no el estatus manual.</p>
+        <p class="nota">La línea punteada marca el 100% de la meta. El color sigue el avance calculado.</p>
       </section>
 
       <section class="card table-card" aria-labelledby="titulo-tabla">
         <div class="table-intro">
           <div class="section-head">
             <h2 id="titulo-tabla" class="section-title">Detalle por unidad</h2>
-            <p id="lead-tabla" class="section-lead">Selecciona un encabezado para ordenar. El estatus es captura manual y puede no coincidir con el avance.</p>
+            <p id="lead-tabla" class="section-lead">Selecciona un encabezado para ordenar. Los subtotales por bloque están al pie.</p>
           </div>
           <p id="tabla-orden" class="nota">Orden: avance de meta, de mayor a menor.</p>
           <p class="scroll-hint no-print" hidden>Desliza la tabla hacia la derecha para ver todas las columnas.</p>
@@ -175,7 +194,7 @@
         <div id="tabla-notas" class="table-notes"></div>
       </section>
 
-      <section class="card" aria-labelledby="titulo-pendiente">
+      <section id="seccion-pendiente" class="card" aria-labelledby="titulo-pendiente">
         <div class="section-head">
           <h2 id="titulo-pendiente" class="section-title">Pendiente de captura</h2>
         </div>
@@ -190,8 +209,16 @@
               <li><code>Crecimiento vs 2024</code> = Ingresos 2026 ÷ Ingresos 2024 − 1. Si los ingresos 2024 son 0, el resultado es −100%. Sin historia, queda pendiente y no entra al total.</li>
               <li><code>% Venta</code> = Venta ÷ Ingresos 2026. Si la venta está vacía y el bloque sí la usa, cuenta como 0. Si el bloque trae <code>aplica_venta: false</code>, la venta no entra y se muestra «No aplica».</li>
             </ul>
-            <p><strong>No se calcula aquí.</strong> Altas totales, bajas, altas netas, porcentaje de altas digitales, tasa de retención, tasa de cancelación, ticket promedio, costo por conversación, porcentaje de conversión, porcentajes de recurrente, recuperado, adelantado, retail, eventos, agregadores y domiciliado, y la suma de ingresos. Esas fórmulas de Notion no quedaron verificadas, o este corte no tiene los insumos. Publicarlas sería presentar un cero como si fuera un resultado.</p>
-            <p>El estatus se muestra tal como se capturó. No se recalcula con el avance: una unidad puede decir «Hasta 50%» y traer otro porcentaje.</p>
+            <p><strong>Periodo de enero a octubre.</strong> El selector de meses solo aplica a Fit. Octubre sale de <code>data/kpis.json</code>. De enero a septiembre, de <code>data/historico.json</code>. Un vacío es «Sin dato», nunca un cero inventado. Un cero capturado se muestra tal cual.</p>
+            <ul>
+              <li>Ingreso, meta, altas, bajas, altas netas, domiciliado, inversión, alcance y conversaciones se suman. Domiciliado es un monto en pesos.</li>
+              <li>Avance = ingreso ÷ meta, solo en los meses y unidades que traen ambos.</li>
+              <li>Usuarios activos: entre meses se usa el último elegido que trae dato; entre unidades se suma.</li>
+              <li>Tasa de retención, tasa de cancelación y ticket promedio: promedio ponderado por usuarios activos. Sin pesos, queda sin dato.</li>
+              <li>Costo por conversación = inversión ÷ conversaciones, con las sumas. No es el promedio de los costos.</li>
+              <li>% Conversión: promedio ponderado por conversaciones. Si el histórico trae <code>null</code>, se muestra «Sin dato». No se usa una conversión estimada.</li>
+            </ul>
+            <p><strong>No se calcula en el corte de octubre</strong> lo que no está en <code>kpis.json</code>: altas, bajas, altas netas, domiciliado, tasas, ticket y conversión salen «Sin dato». Tampoco se muestran los porcentajes de canal ni la suma de ingresos de Notion.</p>
           </details>
         </div>
       </section>
@@ -201,8 +228,8 @@
   <footer class="site-footer">
     <div class="wrap">
       <p class="foot-title">Fit Integra · Resumen comercial · Montos en pesos mexicanos (MXN).</p>
-      <p>Los porcentajes de avance, crecimiento y venta se calculan en el navegador al abrir la página. El archivo de datos solo guarda insumos y el estatus manual.</p>
-      <p>Fuente: <span id="fuente-foot">Notion</span> · <a href="data/kpis.json">data/kpis.json</a></p>
+      <p>Los porcentajes de avance, crecimiento y venta se calculan en el navegador al abrir la página. El archivo de datos solo guarda insumos.</p>
+      <p>Fuente: <span id="fuente-foot">Notion</span> · <a href="data/kpis.json">data/kpis.json</a> · <a href="data/historico.json">data/historico.json</a></p>
     </div>
   </footer>
 

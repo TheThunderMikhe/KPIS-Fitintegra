@@ -1,12 +1,12 @@
 "use strict";
 
-/* Cifras de la red. Solo se calculan fórmulas verificadas:
-   avance = ingresos_2026 / meta
-   crec. vs 2025 = ingresos_2026 / ingresos_2025 - 1
-   crec. vs 2024 = ingresos_2026 / ingresos_2024 - 1, o -1 si la base es 0
-   En un total, el crecimiento solo suma unidades que traen el año base.
-   % venta = venta / ingresos_2026, y la venta vacía cuenta como 0
-   El estatus no se recalcula. */
+/* Cifras de la red.
+   Octubre (corte diario): avance = ingresos_2026 / meta;
+   crec. vs 2025 = ingresos_2026 / ingresos_2025 - 1;
+   crec. vs 2024 = ingresos_2026 / ingresos_2024 - 1, o -1 si la base es 0;
+   % venta = venta / ingresos_2026, y la venta vacía cuenta como 0.
+   El histórico de enero a septiembre solo cubre Fit.
+   Gastos sin inversión no se muestra. */
 
 const INPUT_FIELDS = [
   { key: "meta", label: "Meta", kind: "money", group: "resultado" },
@@ -14,8 +14,6 @@ const INPUT_FIELDS = [
   { key: "ingresos_2025", label: "Ingresos 2025", kind: "money", group: "resultado" },
   { key: "ingresos_2024", label: "Ingresos 2024", kind: "money", group: "resultado" },
   { key: "venta", label: "Venta", kind: "money", group: "resultado" },
-  { key: "gastos_sin_inversion", label: "Gastos sin inversión", kind: "money", group: "resultado" },
-  { key: "status", label: "Estatus", kind: "status", group: "resultado" },
   { key: "usuarios_activos_mes_anterior", label: "Usuarios activos mes anterior", kind: "count", group: "usuarios" },
   { key: "usuarios_activos", label: "Usuarios activos", kind: "count", group: "usuarios" },
   { key: "altas_digitales", label: "Altas digitales", kind: "count", group: "usuarios" },
@@ -42,22 +40,6 @@ const GROUPS = [
   { id: "otro", label: "Otros" },
 ];
 
-const STATUS_CLASS = {
-  "Hasta 50%": "badge-50",
-  "Hasta 75%": "badge-75",
-  "Hasta 90%": "badge-90",
-  "Hasta 99%": "badge-99",
-  "100%+": "badge-100",
-};
-
-const STATUS_RANK = {
-  "Hasta 50%": 1,
-  "Hasta 75%": 2,
-  "Hasta 90%": 3,
-  "Hasta 99%": 4,
-  "100%+": 5,
-};
-
 const moneyFmt = new Intl.NumberFormat("es-MX", {
   style: "currency",
   currency: "MXN",
@@ -82,11 +64,106 @@ const axisPctFmt = new Intl.NumberFormat("es-MX", {
 });
 
 const THEME_KEY = "fit-integra-tema";
+const OCTOBER = "2026-10";
+
+const MONTHS = [
+  { id: "2026-01", token: "ene", label: "Ene", name: "enero" },
+  { id: "2026-02", token: "feb", label: "Feb", name: "febrero" },
+  { id: "2026-03", token: "mar", label: "Mar", name: "marzo" },
+  { id: "2026-04", token: "abr", label: "Abr", name: "abril" },
+  { id: "2026-05", token: "may", label: "May", name: "mayo" },
+  { id: "2026-06", token: "jun", label: "Jun", name: "junio" },
+  { id: "2026-07", token: "jul", label: "Jul", name: "julio" },
+  { id: "2026-08", token: "ago", label: "Ago", name: "agosto" },
+  { id: "2026-09", token: "sep", label: "Sep", name: "septiembre" },
+  { id: "2026-10", token: "oct", label: "Oct", name: "octubre" },
+];
+
+const MONTH_BY_TOKEN = {};
+MONTHS.forEach((month) => {
+  MONTH_BY_TOKEN[month.token] = month.id;
+  MONTH_BY_TOKEN[month.id] = month.id;
+});
+
+const SHORTCUTS = [
+  { id: "t1", label: "T1", months: ["2026-01", "2026-02", "2026-03"] },
+  { id: "t2", label: "T2", months: ["2026-04", "2026-05", "2026-06"] },
+  { id: "t3", label: "T3", months: ["2026-07", "2026-08", "2026-09"] },
+  { id: "ytd", label: "Año a la fecha", months: MONTHS.map((month) => month.id) },
+];
+
+const SHORTCUT_ALIASES = {
+  t1: "t1",
+  t2: "t2",
+  t3: "t3",
+  ytd: "ytd",
+  anio: "ytd",
+  ano: "ytd",
+  "año": "ytd",
+  "a-la-fecha": "ytd",
+};
+
+const RECORD_KEYS = [
+  "ingreso", "meta", "usuarios_activos", "altas", "bajas", "altas_netas",
+  "domiciliado", "tasa_retencion", "tasa_cancelacion", "ticket_promedio",
+  "inversion", "alcance", "conversaciones", "conversion",
+];
+
+const SUM_KEYS = [
+  "ingreso", "meta", "altas", "bajas", "altas_netas", "domiciliado",
+  "inversion", "alcance", "conversaciones",
+];
+
+const WEIGHTED = [
+  { key: "tasa_retencion", weight: "usuarios_activos" },
+  { key: "tasa_cancelacion", weight: "usuarios_activos" },
+  { key: "ticket_promedio", weight: "usuarios_activos" },
+  { key: "conversion", weight: "conversaciones" },
+];
+
+const PERIOD_METRICS = [
+  { key: "ingreso", label: "Ingreso", section: "financiero", hint: "Suma de los meses y unidades elegidos. Si ninguno trae dato, queda sin dato." },
+  { key: "meta", label: "Meta", section: "financiero", hint: "Suma de los meses y unidades elegidos. Si ninguno trae dato, queda sin dato." },
+  { key: "avance", label: "Avance", section: "financiero", hint: "Ingreso ÷ meta, solo en los meses y unidades que traen ambos." },
+  { key: "usuarios_activos", label: "Usuarios activos", section: "usuarios", hint: "Suma entre unidades. Entre meses, el último mes elegido que trae dato." },
+  { key: "altas", label: "Altas", section: "usuarios", hint: "Suma de los meses y unidades elegidos." },
+  { key: "bajas", label: "Bajas", section: "usuarios", hint: "Suma de los meses y unidades elegidos." },
+  { key: "altas_netas", label: "Altas netas", section: "usuarios", hint: "Suma de los meses y unidades elegidos." },
+  { key: "domiciliado", label: "Domiciliado", section: "usuarios", hint: "Monto en pesos. Se suma entre unidades y entre meses. Un cero capturado se muestra tal cual." },
+  { key: "tasa_retencion", label: "Tasa de retención", section: "usuarios", hint: "Promedio ponderado por usuarios activos. Sin pesos, queda sin dato." },
+  { key: "tasa_cancelacion", label: "Tasa de cancelación", section: "usuarios", hint: "Promedio ponderado por usuarios activos. Sin pesos, queda sin dato." },
+  { key: "ticket_promedio", label: "Ticket promedio", section: "usuarios", hint: "Promedio ponderado por usuarios activos. Sin pesos, queda sin dato." },
+  { key: "inversion", label: "Inversión", section: "redes", hint: "Suma de los meses y unidades elegidos." },
+  { key: "alcance", label: "Alcance", section: "redes", hint: "Suma de los meses y unidades elegidos." },
+  { key: "conversaciones", label: "Conversaciones", section: "redes", hint: "Suma de los meses y unidades elegidos." },
+  { key: "costo_conversacion", label: "Costo x conversación", section: "redes", hint: "Inversión ÷ conversaciones, con las sumas del periodo. Si falta una de las dos, queda sin dato." },
+  { key: "conversion", label: "% Conversión", section: "redes", hint: "Promedio ponderado por conversaciones. Si el dato viene vacío, queda sin dato." },
+];
+
+const MONEY_KEYS = new Set(["ingreso", "meta", "domiciliado", "ticket_promedio", "inversion", "costo_conversacion"]);
+const POINT_KEYS = new Set(["tasa_retencion", "tasa_cancelacion", "conversion"]);
+
+const pointsFmt = new Intl.NumberFormat("es-MX", {
+  minimumFractionDigits: 1,
+  maximumFractionDigits: 1,
+});
 
 let currentRows = [];
 let currentCols = [];
 let currentBlocks = [];
-let currentView = { block: null, unit: null, pool: [] };
+let currentView = {
+  block: null,
+  unit: null,
+  pool: [],
+  months: [OCTOBER],
+  octoberOnly: true,
+  fitOnly: false,
+  historyUi: true,
+};
+let historico = { meses: {} };
+let histIndex = {};
+let suspendedMonths = null;
+let sourcePeriodo = "";
 let sortState = { id: "avance", dir: "desc" };
 let avanceChart = null;
 let lastNarrow = null;
@@ -98,6 +175,8 @@ document.getElementById("btn-tema").addEventListener("click", toggleTheme);
 document.getElementById("tabla-head").addEventListener("click", onSort);
 document.getElementById("unit-switch").addEventListener("click", onUnitClick);
 document.getElementById("block-switch").addEventListener("click", onBlockClick);
+document.getElementById("month-switch").addEventListener("click", onMonthClick);
+document.getElementById("month-shortcuts").addEventListener("click", onShortcutClick);
 window.addEventListener("hashchange", () => {
   if (currentRows.length) applySelection();
 });
@@ -117,11 +196,19 @@ load().then(render).catch((error) => {
 });
 
 async function load() {
-  const response = await fetch("data/kpis.json", { cache: "no-store" });
-  if (!response.ok) {
-    throw new Error("No se pudo leer data/kpis.json (" + response.status + ").");
+  const [kpisRes, histRes] = await Promise.all([
+    fetch("data/kpis.json", { cache: "no-store" }),
+    fetch("data/historico.json", { cache: "no-store" }),
+  ]);
+  if (!kpisRes.ok) {
+    throw new Error("No se pudo leer data/kpis.json (" + kpisRes.status + ").");
   }
-  return response.json();
+  if (!histRes.ok) {
+    throw new Error("No se pudo leer data/historico.json (" + histRes.status + ").");
+  }
+  historico = await histRes.json();
+  indexHistorico();
+  return kpisRes.json();
 }
 
 function render(data) {
@@ -196,28 +283,43 @@ function blockById(id) {
 
 function readSelection() {
   const raw = readHash();
-  if (!raw || raw === "todo" || raw === "global") {
-    return { block: null, unit: null, known: !raw || raw === "todo" || raw === "global" };
-  }
+  const fallback = { block: null, unit: null, known: !raw || raw === "todo" || raw === "global", months: [OCTOBER], hadMonths: false };
+  if (!raw || raw === "todo" || raw === "global") return fallback;
   const parts = raw.split("/").map((part) => part.trim()).filter(Boolean);
+  let months = [OCTOBER];
+  let hadMonths = false;
+  const parsedMonths = parseMonthSegment(parts[0]);
+  if (parsedMonths) {
+    months = parsedMonths;
+    hadMonths = true;
+    parts.shift();
+  }
+  if (!parts.length) return { block: null, unit: null, known: true, months, hadMonths };
   if (parts.length >= 2) {
     const block = currentBlocks.find((item) => item.slug === parts[0]);
-    if (!block) return { block: null, unit: null, known: false };
-    if (parts[1] === "global") return { block, unit: null, known: true };
+    if (!block) return fallback;
+    if (parts[1] === "global") return { block, unit: null, known: true, months, hadMonths };
     const unit = currentRows.find((row) => row.slug === parts[1] && row.bloque === block.id) || null;
-    return { block, unit, known: true };
+    return { block, unit, known: true, months, hadMonths };
   }
   const block = currentBlocks.find((item) => item.slug === parts[0]);
-  if (block) return { block, unit: null, known: true };
+  if (block) return { block, unit: null, known: true, months, hadMonths };
   const unit = currentRows.find((row) => row.slug === parts[0]) || null;
-  if (unit) return { block: blockById(unit.bloque), unit, known: true };
-  return { block: null, unit: null, known: false };
+  if (unit) return { block: blockById(unit.bloque), unit, known: true, months, hadMonths };
+  return fallback;
 }
 
 function hashFor(block, unit) {
   if (unit) return (block ? block.slug : unit.blockSlug) + "/" + unit.slug;
   if (block) return block.slug;
   return "todo";
+}
+
+function canonicalHash(block, unit, months) {
+  const base = hashFor(block, unit);
+  if (isOctoberOnly(months)) return base;
+  const segment = months.map((id) => MONTHS.find((month) => month.id === id).token).join("+");
+  return base === "todo" ? segment : segment + "/" + base;
 }
 
 function poolFor(block) {
@@ -227,26 +329,60 @@ function poolFor(block) {
 
 function applySelection() {
   const selection = readSelection();
-  const block = selection.block;
-  const unit = selection.unit;
-  if (selection.known && readHash() && readHash() !== hashFor(block, unit)) {
-    history.replaceState(null, "", "#" + hashFor(block, unit));
+  let block = selection.block;
+  let unit = selection.unit;
+  let months = selection.months.slice();
+  const historyUi = !block || block.id === "fit";
+  if (!historyUi) {
+    if (!isOctoberOnly(months)) suspendedMonths = months.slice();
+    months = [OCTOBER];
+  } else if (selection.hadMonths) {
+    suspendedMonths = null;
   }
-  const pool = poolFor(block);
-  currentView = { block, unit, pool };
+  const currentHash = readHash();
+  const nextHash = canonicalHash(block, unit, months);
+  if (selection.known && currentHash && currentHash !== nextHash) {
+    history.replaceState(null, "", "#" + nextHash);
+  }
+  const octoberOnly = isOctoberOnly(months);
+  const fitOnly = !block && !octoberOnly;
+  let pool = poolFor(block);
+  if (fitOnly) pool = pool.filter((row) => row.bloque === "fit");
+  if (unit && fitOnly && unit.bloque !== "fit") unit = null;
+  currentView = { block, unit, pool, months, octoberOnly, fitOnly, historyUi };
+  pool.forEach((row) => {
+    row.period = aggregateUnit(row, months);
+  });
   const rows = unit ? [unit] : pool;
+  paintMonths();
   paintSwitch(block, unit, pool);
+  paintPeriodBadge();
   paintScope(block, unit, pool);
-  paintNetwork(rows, unit);
-  paintOther(rows, unit);
-  renderChart(pool, unit);
-  currentCols = buildColumns(rows);
-  if (!currentCols.some((col) => col.id === sortState.id)) {
-    const first = currentCols[0];
-    sortState = { id: first.id, dir: first.prefer || "asc" };
+  showOctoberChrome(octoberOnly);
+  if (octoberOnly) {
+    paintNetwork(rows, unit);
+    paintOther(rows, unit);
+    renderChart(pool, unit);
+    currentCols = buildColumns(rows);
+    if (!currentCols.some((col) => col.id === sortState.id)) {
+      const first = currentCols[0];
+      sortState = { id: first.id, dir: first.prefer || "asc" };
+    }
+    paintTable(rows, unit);
+    paintPending(rows, unit);
+  } else {
+    document.getElementById("seccion-otras").hidden = true;
+    renderChart(pool, unit);
+    currentCols = historicalColumns();
+    if (!currentCols.some((col) => col.id === sortState.id)) {
+      sortState = { id: "avance", dir: "desc" };
+    }
+    paintTable(rows, unit);
   }
-  paintTable(rows, unit);
-  paintPending(rows, unit);
+  const totals = aggregateRows(rows, months);
+  paintMetricGrid("grid-usuarios", "usuarios", totals);
+  paintMetricGrid("grid-redes", "redes", totals);
+  if (!octoberOnly) paintMetricGrid("grid-financiero", "financiero", totals);
 }
 
 function chooseHash(next, kind, slug) {
@@ -264,7 +400,9 @@ function onBlockClick(event) {
   const button = event.target.closest("button[data-block]");
   if (!button) return;
   const slug = button.dataset.block;
-  chooseHash(slug === "todo" ? "todo" : slug, "bloque", slug);
+  const block = slug === "todo" ? null : currentBlocks.find((item) => item.slug === slug) || null;
+  const months = monthsForClick(block);
+  chooseHash(canonicalHash(block, null, months), "bloque", slug);
 }
 
 function onUnitClick(event) {
@@ -273,12 +411,39 @@ function onUnitClick(event) {
   const slug = button.dataset.slug;
   if (slug === "global") {
     const block = currentView.block;
-    chooseHash(block ? block.slug : "todo", "unidad", slug);
+    chooseHash(canonicalHash(block, null, monthsForClick(block)), "unidad", slug);
     return;
   }
-  const row = currentView.pool.find((item) => item.slug === slug);
+  const row = currentView.pool.find((item) => item.slug === slug)
+    || currentRows.find((item) => item.slug === slug);
   const block = (row && blockById(row.bloque)) || currentView.block;
-  chooseHash(hashFor(block, row), "unidad", slug);
+  chooseHash(canonicalHash(block, row, monthsForClick(block)), "unidad", slug);
+}
+
+function onMonthClick(event) {
+  const button = event.target.closest("button[data-month]");
+  if (!button || !currentView.historyUi) return;
+  const id = button.dataset.month;
+  let next = currentView.months.slice();
+  if (next.includes(id)) {
+    if (next.length === 1) return;
+    next = next.filter((month) => month !== id);
+  } else {
+    next.push(id);
+    next = sortMonthIds(next);
+  }
+  suspendedMonths = null;
+  chooseHash(canonicalHash(currentView.block, currentView.unit, next), "mes", id);
+}
+
+function onShortcutClick(event) {
+  const button = event.target.closest("button[data-shortcut]");
+  if (!button || !currentView.historyUi) return;
+  const shortcut = SHORTCUTS.find((item) => item.id === button.dataset.shortcut);
+  if (!shortcut) return;
+  if (sameMonths(currentView.months, shortcut.months)) return;
+  suspendedMonths = null;
+  chooseHash(canonicalHash(currentView.block, currentView.unit, shortcut.months.slice()), "mes", shortcut.id);
 }
 
 function paintPills(host, items, pressedSlug, dataAttr) {
@@ -331,42 +496,46 @@ function scopeName(block, unit) {
 }
 
 function paintScope(block, unit, pool) {
-  const nombre = scopeName(block, unit);
-  document.getElementById("titulo-red").textContent = unit ? unit.unidad : block ? "Totales de " + block.nombre : "Totales";
-  document.getElementById("lead-red").textContent = unit
-    ? "Cifras de " + unit.unidad + ". Los porcentajes usan las mismas fórmulas que el total."
-    : block
-      ? "Totales de las " + pool.length + " unidades de " + block.nombre + ". " + crecimientoLead(pool)
-      : "Suma de " + lista(currentBlocks.map((item) => item.nombre)) + ". " + crecimientoLead(pool);
+  const nombre = currentView.fitOnly ? "Fit" : scopeName(block, unit);
+  const periodo = formatPeriod(currentView.months);
+  if (!currentView.octoberOnly) {
+    document.getElementById("titulo-red").textContent = unit ? unit.unidad : block ? "Totales de " + block.nombre : "Totales de Fit";
+    document.getElementById("lead-red").textContent = unit
+      ? unit.unidad + " en " + periodo + ". Sin dato no es un cero."
+      : block
+        ? "Totales de las " + pool.length + " unidades de " + block.nombre + " en " + periodo + "."
+        : "Solo las " + pool.length + " unidades Fit en " + periodo + ". Fit&Go y Alcaldías no entran: no tienen histórico.";
+    document.getElementById("titulo-tabla").textContent = unit ? unit.unidad : nombre;
+    document.getElementById("lead-tabla").textContent = "Cifras de " + periodo + ". Sin dato significa que el histórico no trae ese número.";
+    document.getElementById("titulo-grafica").textContent = "Avance de meta · " + nombre;
+    document.getElementById("chart-lead").textContent = "Cada barra es el ingreso del periodo entre la meta, solo donde hay ambos. " + periodo + ".";
+  } else {
+    document.getElementById("titulo-red").textContent = unit ? unit.unidad : block ? "Totales de " + block.nombre : "Totales";
+    document.getElementById("lead-red").textContent = unit
+      ? "Cifras de " + unit.unidad + ". Los porcentajes usan las mismas fórmulas que el total."
+      : block
+        ? "Totales de las " + pool.length + " unidades de " + block.nombre + ". " + crecimientoLead(pool)
+        : "Suma de " + lista(currentBlocks.map((item) => item.nombre)) + ". " + crecimientoLead(pool);
+    document.getElementById("titulo-tabla").textContent = unit ? unit.unidad : block ? block.nombre : "Detalle por unidad";
+    document.getElementById("lead-tabla").textContent = unit
+      ? "Cifras de " + unit.unidad + "."
+      : block
+        ? "Unidades de " + block.nombre + ". Selecciona un encabezado para ordenar."
+        : "Selecciona un encabezado para ordenar. Los subtotales por bloque están al pie.";
+    const badge = document.getElementById("periodo-badge").textContent;
+    const sinAvance = pool.some((row) => row.avance == null);
+    document.getElementById("titulo-grafica").textContent = unit
+      ? "Avance de meta · " + unit.unidad
+      : "Avance de meta · " + nombre;
+    document.getElementById("chart-lead").textContent = unit
+      ? unit.unidad + " va en color. El resto queda en gris, de mayor a menor avance."
+      : "Cada barra es ingresos 2026 entre la meta. " + badge + ". Ordenado de mayor a menor avance."
+        + (sinAvance ? " Las unidades sin ingresos o sin meta no entran." : "");
+  }
   document.getElementById("titulo-otras").textContent = unit ? "Otras cifras" : "Otras cifras con captura";
   document.getElementById("lead-otras").textContent = unit
     ? "Solo lo que " + unit.unidad + " trae capturado. No se calcula utilidad."
     : "Solo se suman las unidades que traen dato. No se calcula utilidad.";
-  document.getElementById("titulo-tabla").textContent = unit ? unit.unidad : block ? block.nombre : "Detalle por unidad";
-  document.getElementById("lead-tabla").textContent = unit
-    ? "Cifras de " + unit.unidad + ". El estatus es captura manual y puede no coincidir con el avance."
-    : block
-      ? "Unidades de " + block.nombre + ". Selecciona un encabezado para ordenar. El estatus es captura manual y puede no coincidir con el avance."
-      : "Selecciona un encabezado para ordenar. Los subtotales por bloque están al pie. El estatus es captura manual y puede no coincidir con el avance.";
-  const periodo = document.getElementById("periodo-badge").textContent;
-  document.getElementById("titulo-grafica").textContent = unit
-    ? "Avance de meta · " + unit.unidad
-    : "Avance de meta · " + nombre;
-  const sinAvance = pool.some((row) => row.avance == null);
-  document.getElementById("chart-lead").textContent = unit
-    ? unit.unidad + " va en color. El resto queda en gris, de mayor a menor avance."
-    : "Cada barra es ingresos 2026 entre la meta. " + periodo + ". Ordenado de mayor a menor avance."
-      + (sinAvance ? " Las unidades sin ingresos o sin meta no entran." : "");
-
-  const status = document.getElementById("kpi-status");
-  status.replaceChildren();
-  if (!unit) {
-    status.hidden = true;
-    return;
-  }
-  status.hidden = false;
-  if (unit.status) status.append(statusBadge(unit.status));
-  else status.textContent = "Estatus pendiente de captura";
 }
 
 function storedTheme() {
@@ -416,12 +585,7 @@ function derive(raw) {
   if (!unidad) return null;
   const row = { unidad };
   INPUT_FIELDS.forEach((field) => {
-    if (field.kind === "status") {
-      const value = raw[field.key];
-      row[field.key] = value == null || String(value).trim() === "" ? null : String(value).trim();
-    } else {
-      row[field.key] = num(raw[field.key]);
-    }
+    row[field.key] = num(raw[field.key]);
   });
   const ingresos = row.ingresos_2026;
   const meta = row.meta;
@@ -483,9 +647,9 @@ function num(value) {
 }
 
 function paintHeader(data) {
-  const periodo = data.periodo || "Periodo sin definir";
-  document.title = "Resumen comercial · " + periodo + " · Fit Integra";
-  document.getElementById("periodo-badge").textContent = periodo;
+  sourcePeriodo = data.periodo || "Periodo sin definir";
+  document.title = "Resumen comercial · " + sourcePeriodo + " · Fit Integra";
+  document.getElementById("periodo-badge").textContent = sourcePeriodo;
   document.getElementById("actualizacion").textContent = "Última actualización: " + formatStamp(data.ultima_actualizacion);
   const corte = document.getElementById("corte");
   corte.textContent = data.corte || "";
@@ -708,13 +872,6 @@ function growthTotal(rows, actualKey, baseKey, includeZeroBase) {
 }
 
 function paintOther(rows, unit) {
-  paintSumCard("card-gastos", "kpi-gastos", "nota-gastos", rows, "gastos_sin_inversion", moneyFmt, (sum) => {
-    if (unit) return "No se resta de los ingresos: no hay una utilidad verificada.";
-    const cobertura = sum.present + " de " + rows.length + " unidades con captura.";
-    return sum.missing
-      ? cobertura + " No se resta de los ingresos: no hay una utilidad verificada."
-      : "Todas las unidades traen captura. No se resta de los ingresos: no hay una utilidad verificada.";
-  });
   paintSumCard("card-usuarios", "kpi-usuarios", "nota-usuarios", rows, "usuarios_activos_mes_anterior", countFmt, (sum) => {
     const mes = rows.every((row) => row.usuarios_activos == null)
       ? "Usuarios activos del mes en curso: pendiente."
@@ -722,9 +879,7 @@ function paintOther(rows, unit) {
     if (unit) return mes;
     return "Suma de " + sum.present + " unidades." + (mes ? " " + mes : "");
   });
-  const gastos = document.getElementById("card-gastos");
-  const usuarios = document.getElementById("card-usuarios");
-  document.getElementById("seccion-otras").hidden = gastos.hidden && usuarios.hidden;
+  document.getElementById("seccion-otras").hidden = document.getElementById("card-usuarios").hidden;
 }
 
 function paintSumCard(cardId, valueId, noteId, rows, key, formatter, noteText) {
@@ -753,7 +908,19 @@ function sumField(rows, key) {
 function renderChart(rows, unit) {
   const canvas = document.getElementById("chart-avance");
   const fallback = document.getElementById("chart-fallback");
-  const chartRows = rows.filter((row) => row.avance != null).slice().sort((a, b) => b.avance - a.avance);
+  const periodMode = !currentView.octoberOnly;
+  const source = periodMode
+    ? rows.map((row) => ({
+      unidad: row.unidad,
+      avance: row.period ? row.period.avance : null,
+      ingresos_2026: row.period ? row.period.ingreso : null,
+      meta: row.period ? row.period.meta : null,
+      aplicaVenta: false,
+      venta: null,
+      anterior: new Set(),
+    }))
+    : rows;
+  const chartRows = source.filter((row) => row.avance != null).slice().sort((a, b) => b.avance - a.avance);
   const theme = chartTheme();
   document.getElementById("chart-resumen").textContent = chartRows.length
     ? "Avance de meta por unidad, de mayor a menor: " + chartRows.map((row) => row.unidad + " " + pctFmt.format(row.avance)).join(". ") + "."
@@ -764,15 +931,18 @@ function renderChart(rows, unit) {
       avanceChart.destroy();
       avanceChart = null;
     }
-    canvas.parentElement.style.height = "";
+    canvas.parentElement.hidden = true;
     canvas.hidden = true;
     fallback.hidden = false;
     fallback.textContent = chartRows.length
       ? "No se pudo cargar la gráfica. La tabla de abajo tiene las mismas cifras."
-      : "No hay avances para graficar. Hacen falta ingresos y meta.";
+      : periodMode
+        ? "No hay avances para graficar. Hacen falta ingreso y meta en el periodo."
+        : "No hay avances para graficar. Hacen falta ingresos y meta.";
     return;
   }
 
+  canvas.parentElement.hidden = false;
   canvas.hidden = false;
   fallback.hidden = true;
   lastNarrow = window.matchMedia("(max-width: 640px)").matches;
@@ -819,6 +989,12 @@ function renderChart(rows, unit) {
               },
               afterBody(items) {
                 const row = chartRows[items[0].dataIndex];
+                if (periodMode) {
+                  return [
+                    "Ingreso: " + (row.ingresos_2026 == null ? "Sin dato" : moneyFmt.format(row.ingresos_2026)),
+                    "Meta: " + (row.meta == null ? "Sin dato" : moneyFmt.format(row.meta)),
+                  ];
+                }
                 const lineas = [
                   "Ingresos 2026: " + moneyFmt.format(row.ingresos_2026) + (esAnterior(row, "ingresos_2026") ? " (dato anterior)" : ""),
                   "Meta: " + moneyFmt.format(row.meta),
@@ -827,7 +1003,6 @@ function renderChart(rows, unit) {
                 else if (row.venta != null) {
                   lineas.push("Venta: " + moneyFmt.format(row.venta) + (esAnterior(row, "venta") ? " (dato anterior)" : ""));
                 }
-                lineas.push("Estatus (manual): " + (row.status || "Sin captura"));
                 return lineas;
               },
             },
@@ -878,6 +1053,7 @@ function renderChart(rows, unit) {
       avanceChart.destroy();
       avanceChart = null;
     }
+    canvas.parentElement.hidden = true;
     canvas.hidden = true;
     fallback.hidden = false;
     fallback.textContent = "No se pudo dibujar la gráfica. La tabla de abajo tiene las mismas cifras.";
@@ -961,7 +1137,7 @@ function buildColumns(rows) {
   const base = baseColumns().filter((col) => col.visible(rows));
   const used = new Set(baseColumns().map((col) => col.key).filter(Boolean));
   INPUT_FIELDS.forEach((field) => {
-    if (used.has(field.key) || field.kind === "status" || field.key === "gastos_sin_inversion") return;
+    if (used.has(field.key)) return;
     if (!rows.some((row) => row[field.key] != null)) return;
     base.push(columnFromField(field));
   });
@@ -981,19 +1157,6 @@ function baseColumns() {
       visible: () => true,
       render: (row) => textEl(row.unidad, "unidad-nombre"),
       total: (rows) => textEl("Red (" + rows.length + ")", "unidad-nombre"),
-    },
-    {
-      id: "status",
-      key: "status",
-      label: "Estatus",
-      kind: "number",
-      prefer: "asc",
-      align: "left",
-      hint: "Captura manual. No se calcula con el avance.",
-      value: (row) => (row.status == null ? null : STATUS_RANK[row.status] ?? row.status),
-      visible: (rows) => rows.some((row) => row.status != null),
-      render: (row) => statusBadge(row.status),
-      total: () => noteEl("Manual"),
     },
     moneyColumn("meta", "Meta", "Meta del periodo."),
     moneyColumn("ingresos_2026", "Ingresos 2026", "Ingresos capturados en 2026, mes a la fecha."),
@@ -1213,13 +1376,14 @@ function paintTable(rows, unit) {
 
   if (!unit) {
     const blocksInView = currentBlocks.filter((block) => source.some((row) => row.bloque === block.id));
-    if (!currentView.block && blocksInView.length > 1) {
+    if (!currentView.block && !currentView.fitOnly && blocksInView.length > 1) {
       blocksInView.forEach((block) => {
         foot.append(footerRow(source.filter((row) => row.bloque === block.id), block.nombre, "is-subtotal", flags));
       });
       foot.append(footerRow(source, "Todo", "", flags));
     } else {
-      foot.append(footerRow(source, currentView.block ? currentView.block.nombre : "Total", "", flags));
+      const footLabel = currentView.block ? currentView.block.nombre : currentView.fitOnly ? "Fit" : "Total";
+      foot.append(footerRow(source, footLabel, "", flags));
     }
   }
 
@@ -1254,6 +1418,15 @@ function updateScrollHint() {
 function paintNotes(flags, rows) {
   const host = document.getElementById("tabla-notas");
   host.replaceChildren();
+  if (!currentView.octoberOnly) {
+    addNote(host, "Sin dato significa que ese mes no trae el número. No es un cero.");
+    addNote(host, "Octubre se lee de data/kpis.json. De enero a septiembre, de data/historico.json.");
+    addNote(host, "Domiciliado es un monto en pesos y se suma. Usuarios activos usa el último mes con dato.");
+    if (currentView.fitOnly) {
+      addNote(host, "Fit&Go y Alcaldías no tienen histórico, así que no entran en este periodo.");
+    }
+    return;
+  }
   addNote(host, "Los porcentajes se calculan al abrir la página a partir de data/kpis.json.");
   if (flags.dagger) {
     const names = rows.filter((row) => row.ingresos_2024 === 0 && row.crec24 != null).map((row) => row.unidad);
@@ -1309,9 +1482,6 @@ function compareRows(a, b) {
 }
 
 function dirLabel(col) {
-  if (col.id === "status") {
-    return sortState.dir === "asc" ? "de Hasta 50% hacia 100%+" : "de 100%+ hacia Hasta 50%";
-  }
   if (col.kind === "text") {
     return sortState.dir === "asc" ? "de la A a la Z" : "de la Z a la A";
   }
@@ -1504,18 +1674,366 @@ function avanceNode(value, anterior) {
   return wrap;
 }
 
-function statusBadge(status) {
-  if (status == null) return dash();
-  const span = document.createElement("span");
-  span.className = "badge " + (STATUS_CLASS[status] || "badge-unk");
-  span.textContent = status;
-  return span;
-}
-
 function lista(nombres) {
   if (nombres.length <= 1) return nombres[0] || "";
   if (nombres.length === 2) return nombres[0] + " y " + nombres[1];
   return nombres.slice(0, -1).join(", ") + " y " + nombres[nombres.length - 1];
+}
+
+function parseMonthSegment(segment) {
+  const alias = SHORTCUT_ALIASES[segment];
+  if (alias) {
+    const shortcut = SHORTCUTS.find((item) => item.id === alias);
+    return shortcut.months.slice();
+  }
+  const tokens = segment.split("+").map((token) => token.trim()).filter(Boolean);
+  if (!tokens.length) return null;
+  const ids = [];
+  for (let i = 0; i < tokens.length; i += 1) {
+    const id = MONTH_BY_TOKEN[tokens[i]];
+    if (!id) return null;
+    ids.push(id);
+  }
+  return sortMonthIds(ids);
+}
+
+function sortMonthIds(ids) {
+  const order = new Map(MONTHS.map((month, index) => [month.id, index]));
+  return Array.from(new Set(ids)).filter((id) => order.has(id)).sort((a, b) => order.get(a) - order.get(b));
+}
+
+function isOctoberOnly(months) {
+  return months.length === 1 && months[0] === OCTOBER;
+}
+
+function sameMonths(a, b) {
+  if (a.length !== b.length) return false;
+  const left = sortMonthIds(a);
+  const right = sortMonthIds(b);
+  return left.every((id, index) => id === right[index]);
+}
+
+function monthsForClick(block) {
+  const history = !block || block.id === "fit";
+  if (!history) {
+    if (!isOctoberOnly(currentView.months)) suspendedMonths = currentView.months.slice();
+    return [OCTOBER];
+  }
+  if (suspendedMonths && isOctoberOnly(currentView.months)) {
+    const restored = suspendedMonths.slice();
+    suspendedMonths = null;
+    return restored;
+  }
+  return currentView.months.slice();
+}
+
+function formatPeriod(months) {
+  const items = months.map((id) => MONTHS.find((month) => month.id === id)).filter(Boolean);
+  if (!items.length) return "Periodo";
+  const cap = (value) => value.charAt(0).toUpperCase() + value.slice(1);
+  if (items.length === 1) return cap(items[0].name) + " 2026";
+  const indexes = items.map((month) => MONTHS.indexOf(month));
+  const contiguous = indexes.every((value, index) => index === 0 || value === indexes[index - 1] + 1);
+  if (contiguous) return cap(items[0].name) + "–" + items[items.length - 1].name + " 2026";
+  return lista(items.map((month) => month.label)) + " 2026";
+}
+
+function paintPeriodBadge() {
+  const badge = document.getElementById("periodo-badge");
+  const label = currentView.octoberOnly ? sourcePeriodo : formatPeriod(currentView.months);
+  badge.textContent = label;
+  document.title = "Resumen comercial · " + label + " · Fit Integra";
+}
+
+function paintMonths() {
+  const switchEl = document.getElementById("month-switch");
+  const shortcuts = document.getElementById("month-shortcuts");
+  const note = document.getElementById("month-note");
+  switchEl.replaceChildren();
+  shortcuts.replaceChildren();
+  if (!currentView.historyUi) {
+    switchEl.hidden = true;
+    shortcuts.hidden = true;
+    note.hidden = false;
+    note.textContent = "Este bloque solo tiene octubre.";
+    return;
+  }
+  switchEl.hidden = false;
+  shortcuts.hidden = false;
+  const selected = new Set(currentView.months);
+  MONTHS.forEach((month) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "unit-pill";
+    button.dataset.month = month.id;
+    button.textContent = month.label;
+    const pressed = selected.has(month.id);
+    button.setAttribute("aria-pressed", pressed ? "true" : "false");
+    if (pressed && selected.size === 1) button.title = month.name + ". El periodo conserva al menos un mes.";
+    switchEl.append(button);
+  });
+  SHORTCUTS.forEach((shortcut) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "unit-pill";
+    button.dataset.shortcut = shortcut.id;
+    button.textContent = shortcut.label;
+    button.title = formatPeriod(shortcut.months);
+    button.setAttribute("aria-pressed", sameMonths(currentView.months, shortcut.months) ? "true" : "false");
+    shortcuts.append(button);
+  });
+  if (currentView.fitOnly) {
+    note.hidden = false;
+    note.textContent = "Fit&Go y Alcaldías no tienen histórico. Esta vista muestra solo Fit.";
+  } else {
+    note.hidden = true;
+    note.textContent = "";
+  }
+  if (focusKind === "mes" && focusSlug) {
+    const again = document.querySelector('[data-month="' + CSS.escape(focusSlug) + '"], [data-shortcut="' + CSS.escape(focusSlug) + '"]');
+    focusSlug = null;
+    focusKind = null;
+    if (again) again.focus();
+  }
+}
+
+function showOctoberChrome(on) {
+  document.getElementById("kpi-grid").hidden = !on;
+  document.getElementById("grid-financiero").hidden = on;
+  document.getElementById("seccion-pendiente").hidden = !on;
+  if (!on) document.getElementById("seccion-otras").hidden = true;
+}
+
+function foldName(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "");
+}
+
+function indexHistorico() {
+  histIndex = {};
+  const meses = historico && historico.meses && typeof historico.meses === "object" ? historico.meses : {};
+  Object.keys(meses).forEach((monthId) => {
+    const bucket = meses[monthId];
+    if (!bucket || typeof bucket !== "object") return;
+    const units = bucket.unidades && typeof bucket.unidades === "object" ? bucket.unidades : bucket;
+    const map = {};
+    Object.keys(units).forEach((name) => {
+      if (name === "fuente" || name === "fuentes" || name === "notas" || name === "unidades") return;
+      const raw = units[name];
+      if (!raw || typeof raw !== "object" || Array.isArray(raw)) return;
+      map[foldName(name)] = raw;
+    });
+    histIndex[monthId] = map;
+  });
+}
+
+function emptyRecord() {
+  const record = {};
+  RECORD_KEYS.forEach((key) => {
+    record[key] = null;
+  });
+  return record;
+}
+
+function recordFromRaw(raw) {
+  const record = emptyRecord();
+  if (!raw || typeof raw !== "object") return record;
+  RECORD_KEYS.forEach((key) => {
+    record[key] = num(raw[key]);
+  });
+  return record;
+}
+
+function octoberRecord(row) {
+  const record = emptyRecord();
+  record.ingreso = row.ingresos_2026;
+  record.meta = row.meta;
+  record.usuarios_activos = row.usuarios_activos;
+  record.inversion = row.inversion;
+  record.alcance = row.alcance;
+  record.conversaciones = row.conversaciones;
+  return record;
+}
+
+function unitMonth(row, monthId) {
+  if (monthId === OCTOBER) return octoberRecord(row);
+  if (row.bloque !== "fit") return emptyRecord();
+  const map = histIndex[monthId] || {};
+  return recordFromRaw(map[foldName(row.unidad)]);
+}
+
+function sumValues(values) {
+  const present = values.filter((value) => value != null);
+  if (!present.length) return null;
+  return present.reduce((sum, value) => sum + value, 0);
+}
+
+function avanceFromCells(cells) {
+  let ingreso = 0;
+  let meta = 0;
+  let count = 0;
+  cells.forEach((cell) => {
+    if (cell.ingreso == null || cell.meta == null || cell.meta === 0) return;
+    ingreso += cell.ingreso;
+    meta += cell.meta;
+    count += 1;
+  });
+  if (!count || meta === 0) return null;
+  return ingreso / meta;
+}
+
+function costoFrom(inversion, conversaciones) {
+  if (inversion == null || conversaciones == null || conversaciones === 0) return null;
+  return inversion / conversaciones;
+}
+
+function weightedFromCells(cells, key, weightKey) {
+  let acc = 0;
+  let weight = 0;
+  cells.forEach((cell) => {
+    if (cell[key] == null || cell[weightKey] == null || cell[weightKey] === 0) return;
+    acc += cell[key] * cell[weightKey];
+    weight += cell[weightKey];
+  });
+  if (!weight) return null;
+  return acc / weight;
+}
+
+function aggregateUnit(row, months) {
+  const cells = months.map((monthId) => unitMonth(row, monthId));
+  return aggregateCells(cells);
+}
+
+function aggregateRows(rows, months) {
+  const cells = [];
+  rows.forEach((row) => {
+    months.forEach((monthId) => cells.push(unitMonth(row, monthId)));
+  });
+  const perUnit = rows.map((row) => aggregateUnit(row, months));
+  const totals = aggregateCells(cells);
+  totals.usuarios_activos = sumValues(perUnit.map((unit) => unit.usuarios_activos));
+  return totals;
+}
+
+function aggregateCells(cells) {
+  const totals = emptyRecord();
+  SUM_KEYS.forEach((key) => {
+    totals[key] = sumValues(cells.map((cell) => cell[key]));
+  });
+  let usuarios = null;
+  for (let i = cells.length - 1; i >= 0; i -= 1) {
+    if (cells[i].usuarios_activos != null) {
+      usuarios = cells[i].usuarios_activos;
+      break;
+    }
+  }
+  totals.usuarios_activos = usuarios;
+  totals.avance = avanceFromCells(cells);
+  totals.costo_conversacion = costoFrom(totals.inversion, totals.conversaciones);
+  WEIGHTED.forEach((spec) => {
+    totals[spec.key] = weightedFromCells(cells, spec.key, spec.weight);
+  });
+  return totals;
+}
+
+function formatMetric(key, value) {
+  if (value == null || !Number.isFinite(value)) return null;
+  if (key === "avance") return pctFmt.format(value);
+  if (POINT_KEYS.has(key)) return pointsFmt.format(value) + "%";
+  if (MONEY_KEYS.has(key)) return moneyFmt.format(value);
+  return countFmt.format(value);
+}
+
+function paintMetricGrid(hostId, section, totals) {
+  const host = document.getElementById(hostId);
+  host.replaceChildren();
+  PERIOD_METRICS.filter((metric) => metric.section === section).forEach((metric) => {
+    const article = document.createElement("article");
+    article.className = "card";
+    const heading = document.createElement("h3");
+    heading.className = "card-label";
+    heading.textContent = metric.label;
+    heading.title = metric.hint;
+    const valueEl = document.createElement("p");
+    valueEl.className = "kpi-value";
+    const raw = totals[metric.key];
+    const text = formatMetric(metric.key, raw);
+    if (text == null) {
+      valueEl.textContent = "Sin dato";
+      valueEl.classList.add("is-empty");
+    } else {
+      valueEl.textContent = text;
+      if (metric.key === "avance") valueEl.classList.add("text-b" + bandKey(raw));
+    }
+    article.append(heading, valueEl);
+    if (metric.key === "avance" && raw != null && Number.isFinite(raw)) {
+      const track = document.createElement("div");
+      track.className = "track";
+      track.setAttribute("role", "progressbar");
+      track.setAttribute("aria-valuemin", "0");
+      track.setAttribute("aria-valuemax", "100");
+      track.setAttribute("aria-valuenow", String(Math.round(raw * 100)));
+      track.setAttribute("aria-valuetext", text);
+      const fill = document.createElement("span");
+      fill.className = "fill fill-" + bandKey(raw);
+      fill.style.width = Math.max(0, Math.min(raw, 1)) * 100 + "%";
+      track.append(fill);
+      article.append(track);
+    }
+    host.append(article);
+  });
+}
+
+function historicalColumns() {
+  const columns = [
+    {
+      id: "unidad",
+      label: "Unidad",
+      kind: "text",
+      prefer: "asc",
+      align: "left",
+      hint: "",
+      value: (row) => row.unidad,
+      visible: () => true,
+      render: (row) => textEl(row.unidad, "unidad-nombre"),
+      total: () => textEl(""),
+    },
+  ];
+  PERIOD_METRICS.forEach((metric) => {
+    columns.push({
+      id: metric.key,
+      label: metric.label,
+      kind: "number",
+      prefer: "desc",
+      align: "right",
+      hint: metric.hint,
+      value: (row) => (row.period ? row.period[metric.key] : null),
+      visible: () => true,
+      render: (row) => metricCell(metric.key, row.period ? row.period[metric.key] : null),
+      total: (rows) => metricCell(metric.key, aggregateRows(rows, currentView.months)[metric.key]),
+    });
+  });
+  return columns;
+}
+
+function metricCell(key, value) {
+  if (key === "avance") {
+    if (value == null || !Number.isFinite(value)) return sinDato();
+    return avanceNode(value);
+  }
+  const text = formatMetric(key, value);
+  if (text == null) return sinDato();
+  return textEl(text);
+}
+
+function sinDato() {
+  const span = document.createElement("span");
+  span.className = "sin-dato";
+  span.textContent = "Sin dato";
+  return span;
 }
 
 function showError(message) {
