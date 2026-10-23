@@ -351,7 +351,7 @@
       "unidad": "La Pila",
       "bloque": "fit-go",
       "meta": 3393509,
-      "ingresos_2026": 2269085,
+      "ingresos_2026": 2282408.64,
       "ingresos_2025": null,
       "ingresos_2024": null,
       "usuarios_activos_mes_anterior": null,
@@ -372,9 +372,6 @@
       "cargos_domiciliados": null,
       "gastos_sin_inversion": null,
       "numero": null,
-      "dato_anterior": [
-        "ingresos_2026"
-      ],
       "status": null
     },
     {
