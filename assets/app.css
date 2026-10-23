@@ -387,6 +387,57 @@ html[data-theme="dark"] .icon-btn .icon-sun {
   margin-bottom: 0.55rem;
 }
 
+[hidden] {
+  display: none !important;
+}
+
+.month-bar {
+  margin-bottom: 0.7rem;
+}
+
+.month-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.85rem;
+}
+
+.shortcut-switch .unit-pill {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.32rem 0.65rem;
+}
+
+.month-note {
+  margin: 0.45rem 0 0;
+  font-size: 0.85rem;
+  line-height: 1.4;
+  color: var(--text-muted);
+}
+
+.section-kicker {
+  margin: 0 0 0.2rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--brand);
+}
+
+.kpi-value.is-empty {
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 1.05rem;
+  font-weight: 600;
+  letter-spacing: 0;
+  color: var(--text-muted);
+}
+
+.sin-dato {
+  color: var(--text-muted);
+  font-weight: 600;
+  font-size: 0.82rem;
+}
+
 .unit-pill {
   appearance: none;
   border: 1px solid var(--border-strong);
@@ -954,10 +1005,12 @@ tfoot tr.is-subtotal td {
 
 @media (min-width: 1100px) {
   .kpi-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .kpi-grid.cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 
 @media (max-width: 720px) {
   .chart-box { height: 32rem; }
+  .month-row,
   .unit-switch {
     flex-wrap: nowrap;
     overflow-x: auto;
@@ -965,6 +1018,7 @@ tfoot tr.is-subtotal td {
     -webkit-overflow-scrolling: touch;
     scrollbar-width: thin;
   }
+  .month-row .unit-switch { overflow: visible; }
   .unit-pill { flex: 0 0 auto; }
 }
 
