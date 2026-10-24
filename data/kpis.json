@@ -2,8 +2,8 @@
   "schema_version": 1,
   "periodo": "01/10/2026-24/10/2026",
   "corte": "Del 1 al 24 de octubre de 2026",
-  "ultima_actualizacion": "2026-10-24T12:00:00-06:00",
-  "fuente": "KPI Guy · 24 de octubre de 2026, 12:00",
+  "ultima_actualizacion": "2026-10-24T12:30:00-06:00",
+  "fuente": "KPI Guy · 24 de octubre de 2026, 12:00 + EVO",
   "moneda": "MXN",
   "bloques": [
     {
@@ -81,7 +81,7 @@
       "unidad": "Cuemanco",
       "bloque": "fit",
       "meta": 3392232,
-      "ingresos_2026": 2620022.78,
+      "ingresos_2026": 2652751.78,
       "ingresos_2025": 2793259,
       "ingresos_2024": 2264406,
       "usuarios_activos_mes_anterior": 2768,
@@ -102,16 +102,13 @@
       "cargos_domiciliados": null,
       "gastos_sin_inversion": 3323923,
       "numero": null,
-      "dato_anterior": [
-        "ingresos_2026"
-      ],
       "status": "Hasta 75%"
     },
     {
       "unidad": "La Salle",
       "bloque": "fit",
       "meta": 1534400,
-      "ingresos_2026": 1078345.58,
+      "ingresos_2026": 1103880.32,
       "ingresos_2025": 1381184,
       "ingresos_2024": 1254548,
       "usuarios_activos_mes_anterior": 1096,
@@ -132,9 +129,6 @@
       "cargos_domiciliados": null,
       "gastos_sin_inversion": 2198979,
       "numero": null,
-      "dato_anterior": [
-        "ingresos_2026"
-      ],
       "status": "Hasta 50%"
     },
     {
@@ -447,7 +441,7 @@
       "unidad": "VC - Felipe Tibio Muñoz",
       "bloque": "alcaldias",
       "meta": 727826,
-      "ingresos_2026": 640563.81,
+      "ingresos_2026": 641349.19,
       "ingresos_2025": null,
       "ingresos_2024": null,
       "usuarios_activos_mes_anterior": null,
@@ -468,16 +462,13 @@
       "cargos_domiciliados": null,
       "gastos_sin_inversion": null,
       "numero": null,
-      "dato_anterior": [
-        "ingresos_2026"
-      ],
       "status": null
     },
     {
       "unidad": "VC - Pino Suárez",
       "bloque": "alcaldias",
       "meta": 1000000,
-      "ingresos_2026": 866038.35,
+      "ingresos_2026": 868378.6,
       "ingresos_2025": null,
       "ingresos_2024": null,
       "usuarios_activos_mes_anterior": null,
@@ -498,16 +489,13 @@
       "cargos_domiciliados": null,
       "gastos_sin_inversion": null,
       "numero": null,
-      "dato_anterior": [
-        "ingresos_2026"
-      ],
       "status": null
     },
     {
       "unidad": "VC - Venustiano Carranza",
       "bloque": "alcaldias",
       "meta": 1329895,
-      "ingresos_2026": 1215909.81,
+      "ingresos_2026": 1224411.18,
       "ingresos_2025": null,
       "ingresos_2024": null,
       "usuarios_activos_mes_anterior": null,
@@ -528,16 +516,13 @@
       "cargos_domiciliados": null,
       "gastos_sin_inversion": null,
       "numero": null,
-      "dato_anterior": [
-        "ingresos_2026"
-      ],
       "status": null
     },
     {
       "unidad": "VC - Oceanía",
       "bloque": "alcaldias",
       "meta": 1521706,
-      "ingresos_2026": 1379829.02,
+      "ingresos_2026": 1388363.75,
       "ingresos_2025": null,
       "ingresos_2024": null,
       "usuarios_activos_mes_anterior": null,
@@ -558,16 +543,13 @@
       "cargos_domiciliados": null,
       "gastos_sin_inversion": null,
       "numero": null,
-      "dato_anterior": [
-        "ingresos_2026"
-      ],
       "status": null
     },
     {
       "unidad": "VC - Velódromo",
       "bloque": "alcaldias",
       "meta": 2566577,
-      "ingresos_2026": 1904520.82,
+      "ingresos_2026": 1925545.46,
       "ingresos_2025": null,
       "ingresos_2024": null,
       "usuarios_activos_mes_anterior": null,
@@ -588,16 +570,13 @@
       "cargos_domiciliados": null,
       "gastos_sin_inversion": null,
       "numero": null,
-      "dato_anterior": [
-        "ingresos_2026"
-      ],
       "status": null
     },
     {
       "unidad": "VC - Plutarco Elías Calles",
       "bloque": "alcaldias",
       "meta": 755000,
-      "ingresos_2026": 696960,
+      "ingresos_2026": 701506.04,
       "ingresos_2025": null,
       "ingresos_2024": null,
       "usuarios_activos_mes_anterior": null,
@@ -618,16 +597,13 @@
       "cargos_domiciliados": null,
       "gastos_sin_inversion": null,
       "numero": null,
-      "dato_anterior": [
-        "ingresos_2026"
-      ],
       "status": null
     },
     {
       "unidad": "Cuajimalpa - Morelos",
       "bloque": "alcaldias",
       "meta": 580000,
-      "ingresos_2026": 565158.5,
+      "ingresos_2026": 565918.5,
       "ingresos_2025": null,
       "ingresos_2024": null,
       "usuarios_activos_mes_anterior": null,
@@ -648,16 +624,13 @@
       "cargos_domiciliados": null,
       "gastos_sin_inversion": null,
       "numero": null,
-      "dato_anterior": [
-        "ingresos_2026"
-      ],
       "status": null
     },
     {
       "unidad": "Cuajimalpa - Tinajas",
       "bloque": "alcaldias",
       "meta": 95923,
-      "ingresos_2026": 115391,
+      "ingresos_2026": 115644,
       "ingresos_2025": null,
       "ingresos_2024": null,
       "usuarios_activos_mes_anterior": null,
@@ -678,16 +651,13 @@
       "cargos_domiciliados": null,
       "gastos_sin_inversion": null,
       "numero": null,
-      "dato_anterior": [
-        "ingresos_2026"
-      ],
       "status": null
     },
     {
       "unidad": "Cuajimalpa - San Mateo",
       "bloque": "alcaldias",
       "meta": 250000,
-      "ingresos_2026": 250946,
+      "ingresos_2026": 251705,
       "ingresos_2025": null,
       "ingresos_2024": null,
       "usuarios_activos_mes_anterior": null,
@@ -708,9 +678,6 @@
       "cargos_domiciliados": null,
       "gastos_sin_inversion": null,
       "numero": null,
-      "dato_anterior": [
-        "ingresos_2026"
-      ],
       "status": null
     },
     {
@@ -738,9 +705,6 @@
       "cargos_domiciliados": null,
       "gastos_sin_inversion": null,
       "numero": null,
-      "dato_anterior": [
-        "ingresos_2026"
-      ],
       "status": null
     },
     {
@@ -768,9 +732,6 @@
       "cargos_domiciliados": null,
       "gastos_sin_inversion": null,
       "numero": null,
-      "dato_anterior": [
-        "ingresos_2026"
-      ],
       "status": null
     }
   ]
